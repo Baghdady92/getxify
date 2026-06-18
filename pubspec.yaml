@@ -1,0 +1,24 @@
+name: getxify
+description: "An improved and enhanced version of GetX - Open screens/snackbars/dialogs without context, manage states and inject dependencies easily with GetXify."
+version: 1.0.0
+homepage: https://github.com/Aniketkhote/getxify
+repository: https://github.com/Aniketkhote/getxify
+issue_tracker: https://github.com/Aniketkhote/getxify/issues
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.44.2"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  web: ">=1.1.0 <2.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
