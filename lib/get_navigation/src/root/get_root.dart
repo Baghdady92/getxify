@@ -6,6 +6,11 @@ import 'package:getxify/get_navigation/src/routes/test_kit.dart';
 import '../../../getxify.dart';
 import '../router_report.dart';
 
+/// The central configuration container used internally by GetXify.
+/// 
+/// [ConfigData] aggregates all properties required to bootstrap a 
+/// GetMaterialApp or GetCupertinoApp, bridging the gap between legacy 
+/// Flutter properties and GetXify's advanced routing, localization, and state systems.
 class ConfigData {
   final ValueChanged<Routing?>? routingCallback;
   final Transition? defaultTransition;
@@ -23,6 +28,7 @@ class ConfigData {
   final RouteInformationProvider? routeInformationProvider;
   final RouteInformationParser<Object>? routeInformationParser;
   final RouterDelegate<Object>? routerDelegate;
+  final RouterConfig<Object>? routerConfig;
   final BackButtonDispatcher? backButtonDispatcher;
   final List<NavigatorObserver>? navigatorObservers;
   final GlobalKey<NavigatorState>? navigatorKey;
@@ -66,6 +72,7 @@ class ConfigData {
     required this.routeInformationProvider,
     required this.routeInformationParser,
     required this.routerDelegate,
+    required this.routerConfig,
     required this.backButtonDispatcher,
     required this.navigatorObservers,
     required this.navigatorKey,
@@ -109,6 +116,7 @@ class ConfigData {
     RouteInformationProvider? routeInformationProvider,
     RouteInformationParser<Object>? routeInformationParser,
     RouterDelegate<Object>? routerDelegate,
+    RouterConfig<Object>? routerConfig,
     BackButtonDispatcher? backButtonDispatcher,
     List<NavigatorObserver>? navigatorObservers,
     GlobalKey<NavigatorState>? navigatorKey,
@@ -153,6 +161,7 @@ class ConfigData {
       routeInformationParser:
           routeInformationParser ?? this.routeInformationParser,
       routerDelegate: routerDelegate ?? this.routerDelegate,
+      routerConfig: routerConfig ?? this.routerConfig,
       backButtonDispatcher: backButtonDispatcher ?? this.backButtonDispatcher,
       navigatorObservers: navigatorObservers ?? this.navigatorObservers,
       navigatorKey: navigatorKey ?? this.navigatorKey,
@@ -206,6 +215,7 @@ class ConfigData {
         other.routeInformationProvider == routeInformationProvider &&
         other.routeInformationParser == routeInformationParser &&
         other.routerDelegate == routerDelegate &&
+        other.routerConfig == routerConfig &&
         other.backButtonDispatcher == backButtonDispatcher &&
         listEquals(other.navigatorObservers, navigatorObservers) &&
         other.navigatorKey == navigatorKey &&
@@ -251,6 +261,7 @@ class ConfigData {
         routeInformationProvider.hashCode ^
         routeInformationParser.hashCode ^
         routerDelegate.hashCode ^
+        routerConfig.hashCode ^
         backButtonDispatcher.hashCode ^
         navigatorObservers.hashCode ^
         navigatorKey.hashCode ^
@@ -278,6 +289,11 @@ class ConfigData {
   }
 }
 
+/// The underlying StatefulWidget serving as the structural anchor for all GetXify apps.
+/// 
+/// [GetRoot] intercepts configuration from `GetMaterialApp` and `GetCupertinoApp`, 
+/// processes the [ConfigData], initializes localization, translations, routing, and 
+/// theme systems before injecting them into the standard Flutter application widget.
 class GetRoot extends StatefulWidget {
   const GetRoot({super.key, required this.config, required this.child});
   final ConfigData config;
@@ -356,46 +372,48 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
   }
 
   void onInit() {
-    if (config.getPages == null && config.home == null) {
-      throw Exception('You need add pages or home');
-    }
+    if (config.routerConfig == null) {
+      if (config.getPages == null && config.home == null) {
+        throw Exception('You need add pages or home');
+      }
 
-    if (config.routerDelegate == null) {
-      final newDelegate = GetDelegate.createDelegate(
-        pages:
-            config.getPages ??
-            [
-              GetPage(
-                name: cleanRouteName("/${config.home.runtimeType}"),
-                page: () => config.home!,
-              ),
-            ],
-        notFoundRoute: config.unknownRoute,
-        navigatorKey: config.navigatorKey,
-        navigatorObservers: (config.navigatorObservers == null
-            ? <NavigatorObserver>[
-                GetObserver(config.routingCallback, Get.routing),
-              ]
-            : <NavigatorObserver>[
-                GetObserver(config.routingCallback, config.routing),
-                ...config.navigatorObservers!,
-              ]),
-      );
-      config = config.copyWith(routerDelegate: newDelegate);
-    }
+      if (config.routerDelegate == null) {
+        final newDelegate = GetDelegate.createDelegate(
+          pages:
+              config.getPages ??
+              [
+                GetPage(
+                  name: cleanRouteName("/${config.home.runtimeType}"),
+                  page: () => config.home!,
+                ),
+              ],
+          notFoundRoute: config.unknownRoute,
+          navigatorKey: config.navigatorKey,
+          navigatorObservers: (config.navigatorObservers == null
+              ? <NavigatorObserver>[
+                  GetObserver(config.routingCallback, Get.routing),
+                ]
+              : <NavigatorObserver>[
+                  GetObserver(config.routingCallback, config.routing),
+                  ...config.navigatorObservers!,
+                ]),
+        );
+        config = config.copyWith(routerDelegate: newDelegate);
+      }
 
-    if (config.routeInformationParser == null) {
-      final newRouteInformationParser =
-          GetInformationParser.createInformationParser(
-            initialRoute:
-                config.initialRoute ??
-                config.getPages?.first.name ??
-                cleanRouteName("/${config.home.runtimeType}"),
-          );
+      if (config.routeInformationParser == null) {
+        final newRouteInformationParser =
+            GetInformationParser.createInformationParser(
+              initialRoute:
+                  config.initialRoute ??
+                  config.getPages?.first.name ??
+                  cleanRouteName("/${config.home.runtimeType}"),
+            );
 
-      config = config.copyWith(
-        routeInformationParser: newRouteInformationParser,
-      );
+        config = config.copyWith(
+          routeInformationParser: newRouteInformationParser,
+        );
+      }
     }
 
     if (config.locale != null) Get.locale = config.locale;

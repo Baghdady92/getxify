@@ -98,11 +98,12 @@ mixin StatelessObserverComponent on StatelessElement {
   List<Disposer>? disposers = <Disposer>[];
 
   void getUpdate() {
-    // if (disposers != null && !dirty) {
-    //   markNeedsBuild();
-    // }
     if (disposers != null) {
-      scheduleMicrotask(markNeedsBuild);
+      scheduleMicrotask(() {
+        if (mounted) {
+          markNeedsBuild();
+        }
+      });
     }
   }
 

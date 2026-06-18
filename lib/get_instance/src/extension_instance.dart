@@ -44,8 +44,6 @@ extension ResetInstance on GetInterface {
   /// `clearRouteBindings` clears Instances associated with routes.
   ///
   bool resetInstance({bool clearRouteBindings = true}) {
-    //  if (clearFactory) _factory.clear();
-    // deleteAll(force: true);
     if (clearRouteBindings) RouterReportManager.instance.clearRouteKeys();
     Inst._singl.clear();
 
@@ -59,24 +57,6 @@ extension Inst on GetInterface {
   /// Holds references to every registered Instance when using
   /// `Get.put()`
   static final Map<String, _InstanceBuilderFactory<Object?>> _singl = {};
-
-  /// Holds a reference to every registered callback when using
-  /// `Get.lazyPut()`
-  // static final Map<String, _Lazy> _factory = {};
-
-  // void injector<S>(
-  //   InjectorBuilderCallback<S> fn, {
-  //   String? tag,
-  //   bool fenix = false,
-  //   //  bool permanent = false,
-  // }) {
-  //   lazyPut(
-  //     () => fn(this),
-  //     tag: tag,
-  //     fenix: fenix,
-  //     // permanent: permanent,
-  //   );
-  // }
 
   S put<S>(S dependency, {String? tag, bool permanent = false}) {
     _insert(
@@ -372,12 +352,6 @@ extension Inst on GetInterface {
   /// Delete registered Class Instance [S] (or [tag]) and, closes any open
   /// controllers `DisposableInterface`, cleans up the memory
   ///
-  /// /// Deletes the Instance<[S]>, cleaning the memory.
-  //  ///
-  //  /// - [tag] Optional "tag" used to register the Instance
-  //  /// - [key] For internal usage, is the processed key used to register
-  //  ///   the Instance. **don't use** it unless you know what you are doing.
-
   /// Deletes the Instance<[S]>, cleaning the memory and closes any open
   /// controllers (`DisposableInterface`).
   ///
@@ -517,10 +491,6 @@ extension Inst on GetInterface {
 typedef InstanceBuilderCallback<S> = S Function();
 
 typedef InstanceCreateBuilderCallback<S> = S Function(BuildContext _);
-
-// typedef InstanceBuilderCallback<S> = S Function();
-
-// typedef InjectorBuilderCallback<S> = S Function(Inst);
 
 typedef AsyncInstanceBuilderCallback<S> = Future<S> Function();
 

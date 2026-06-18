@@ -5,7 +5,6 @@ part of '../rx_types.dart';
 /// of those `Widgets` and Rx values.
 
 mixin RxObjectMixin<T> on GetListenable<T> {
-  //late T _value;
 
   /// Makes a direct update of [value] adding it to the Stream
   /// useful when you make use of Rx for custom Types to refresh your UI.
@@ -25,9 +24,6 @@ mixin RxObjectMixin<T> on GetListenable<T> {
   /// person.refresh();
   /// print( person );
   /// ```
-  // void refresh() {
-  //   subject.add(value);
-  // }
 
   /// updates the value to `null` and adds it to the Stream.
   /// Even with null-safety coming, is still an important feature to support, as
@@ -39,10 +35,6 @@ mixin RxObjectMixin<T> on GetListenable<T> {
   /// final inputError = ''.obs..nil();
   /// print('${inputError.runtimeType}: $inputError'); // outputs > RxString: null
   /// ```
-  // void nil() {
-  //   subject.add(_value = null);
-  // }
-
   /// Makes this Rx looks like a function so you can update a new
   /// value using `rx(someOtherValue)`. Practical to assign the Rx directly
   /// to some Widget that has a signature ::onChange( value )
@@ -132,8 +124,6 @@ mixin RxObjectMixin<T> on GetListenable<T> {
   /// Closing the subscription will happen automatically when the observer
   /// Widget (`GetX` or `Obx`) gets unmounted from the Widget tree.
   void bindStream(Stream<T> stream) {
-    // final listSubscriptions =
-    //     _subscriptions[subject] ??= <StreamSubscription>[];
 
     final sub = stream.listen((va) => value = va);
     reportAdd(sub.cancel);

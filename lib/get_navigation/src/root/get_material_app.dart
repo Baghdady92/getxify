@@ -7,6 +7,16 @@ import '../../../get_utils/get_utils.dart';
 import '../../get_navigation.dart';
 import 'get_root.dart';
 
+/// A fully customized [MaterialApp] designed to be the entry point for GetXify applications.
+/// 
+/// It extends [MaterialApp] capabilities by seamlessly integrating:
+/// * **Routing:** Built-in declarative routing via [getPages] or standard [routes].
+/// * **State Management:** Dependency injection configuration using [binds].
+/// * **Theming:** Dynamic theme swapping and transition management.
+/// * **Localization:** Simple language setup with [translations] and [locale].
+///
+/// Use [GetMaterialApp.router] to construct an app using the Router API, 
+/// supplying a [routerConfig] or custom [routerDelegate].
 class GetMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
   final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
@@ -67,6 +77,10 @@ class GetMaterialApp extends StatelessWidget {
   final BackButtonDispatcher? backButtonDispatcher;
   final bool useInheritedMediaQuery;
 
+  /// Creates a [GetMaterialApp] instance for a standard GetX application.
+  ///
+  /// You can use [home] to set the main entry widget, or provide a list of [getPages] 
+  /// with an [initialRoute] to utilize the GetX declarative routing system.
   const GetMaterialApp({
     super.key,
     this.navigatorKey,
@@ -130,6 +144,11 @@ class GetMaterialApp extends StatelessWidget {
        routerDelegate = null,
        routerConfig = null;
 
+  /// Creates a [GetMaterialApp] that uses the standard Flutter Router API.
+  ///
+  /// You can use [routerConfig] to provide a fully configured router, or
+  /// use legacy Router properties like [routerDelegate] and [routeInformationParser].
+  /// Note: [routerConfig] is mutually exclusive with [routerDelegate] and other legacy properties.
   const GetMaterialApp.router({
     super.key,
     this.routeInformationProvider,
@@ -215,6 +234,7 @@ class GetMaterialApp extends StatelessWidget {
         routeInformationParser: routeInformationParser,
         routeInformationProvider: routeInformationProvider,
         routerDelegate: routerDelegate,
+        routerConfig: routerConfig,
         routingCallback: routingCallback,
         scaffoldMessengerKey: scaffoldMessengerKey,
         smartManagement: smartManagement,
@@ -227,63 +247,84 @@ class GetMaterialApp extends StatelessWidget {
         themeMode: themeMode,
         defaultPopGesture: popGesture,
       ),
-      // binds: [
-      //   Bind.lazyPut<GetMaterialController>(
-      //     () => GetMaterialController(
-
-      //     ),
-      //     onClose: () {
-      //       Get.clearTranslations();
-      //       RouterReportManager.dispose();
-      //       Get.resetInstance(clearRouteBindings: true);
-      //     },
-      //   ),
-      //   ...binds,
-      // ],
       child: Builder(
         builder: (context) {
           final controller = GetRoot.of(context);
-          return MaterialApp.router(
-            routerDelegate: controller.config.routerDelegate,
-            routeInformationParser: controller.config.routeInformationParser,
-            backButtonDispatcher: backButtonDispatcher,
-            routeInformationProvider: routeInformationProvider,
-            routerConfig: routerConfig,
-            key: controller.config.unikey,
-            builder: (context, child) => Directionality(
-              textDirection:
-                  textDirection ??
-                  (rtlLanguages.contains(Get.locale?.languageCode)
-                      ? TextDirection.rtl
-                      : TextDirection.ltr),
-              child: builder == null
-                  ? (child ?? const Material())
-                  : builder!(context, child ?? const Material()),
-            ),
-            title: title,
-            onGenerateTitle: onGenerateTitle,
-            color: color,
-            theme: controller.config.theme ?? ThemeData.fallback(),
-            darkTheme:
-                controller.config.darkTheme ??
-                controller.config.theme ??
-                ThemeData.fallback(),
-            themeMode: controller.config.themeMode,
-            locale: Get.locale ?? locale,
-            scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
-            localizationsDelegates: localizationsDelegates,
-            localeListResolutionCallback: localeListResolutionCallback,
-            localeResolutionCallback: localeResolutionCallback,
-            supportedLocales: supportedLocales,
-            debugShowMaterialGrid: debugShowMaterialGrid,
-            showPerformanceOverlay: showPerformanceOverlay,
-            checkerboardRasterCacheImages: checkerboardRasterCacheImages,
-            checkerboardOffscreenLayers: checkerboardOffscreenLayers,
-            showSemanticsDebugger: showSemanticsDebugger,
-            debugShowCheckedModeBanner: debugShowCheckedModeBanner,
-            shortcuts: shortcuts,
-            scrollBehavior: scrollBehavior,
-          );
+          return controller.config.routerConfig != null
+              ? MaterialApp.router(
+                  routerConfig: controller.config.routerConfig,
+                  key: controller.config.unikey,
+                  builder: (context, child) => Directionality(
+                    textDirection: textDirection ??
+                        (rtlLanguages.contains(Get.locale?.languageCode)
+                            ? TextDirection.rtl
+                            : TextDirection.ltr),
+                    child: builder == null
+                        ? (child ?? const Material())
+                        : builder!(context, child ?? const Material()),
+                  ),
+                  title: title,
+                  onGenerateTitle: onGenerateTitle,
+                  color: color,
+                  theme: controller.config.theme ?? ThemeData.fallback(),
+                  darkTheme: controller.config.darkTheme ??
+                      controller.config.theme ??
+                      ThemeData.fallback(),
+                  themeMode: controller.config.themeMode,
+                  locale: Get.locale ?? locale,
+                  scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
+                  localizationsDelegates: localizationsDelegates,
+                  localeListResolutionCallback: localeListResolutionCallback,
+                  localeResolutionCallback: localeResolutionCallback,
+                  supportedLocales: supportedLocales,
+                  debugShowMaterialGrid: debugShowMaterialGrid,
+                  showPerformanceOverlay: showPerformanceOverlay,
+                  checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+                  checkerboardOffscreenLayers: checkerboardOffscreenLayers,
+                  showSemanticsDebugger: showSemanticsDebugger,
+                  debugShowCheckedModeBanner: debugShowCheckedModeBanner,
+                  shortcuts: shortcuts,
+                  scrollBehavior: scrollBehavior,
+                )
+              : MaterialApp.router(
+                  routerDelegate: controller.config.routerDelegate,
+                  routeInformationParser:
+                      controller.config.routeInformationParser,
+                  backButtonDispatcher: backButtonDispatcher,
+                  routeInformationProvider: routeInformationProvider,
+                  key: controller.config.unikey,
+                  builder: (context, child) => Directionality(
+                    textDirection: textDirection ??
+                        (rtlLanguages.contains(Get.locale?.languageCode)
+                            ? TextDirection.rtl
+                            : TextDirection.ltr),
+                    child: builder == null
+                        ? (child ?? const Material())
+                        : builder!(context, child ?? const Material()),
+                  ),
+                  title: title,
+                  onGenerateTitle: onGenerateTitle,
+                  color: color,
+                  theme: controller.config.theme ?? ThemeData.fallback(),
+                  darkTheme: controller.config.darkTheme ??
+                      controller.config.theme ??
+                      ThemeData.fallback(),
+                  themeMode: controller.config.themeMode,
+                  locale: Get.locale ?? locale,
+                  scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
+                  localizationsDelegates: localizationsDelegates,
+                  localeListResolutionCallback: localeListResolutionCallback,
+                  localeResolutionCallback: localeResolutionCallback,
+                  supportedLocales: supportedLocales,
+                  debugShowMaterialGrid: debugShowMaterialGrid,
+                  showPerformanceOverlay: showPerformanceOverlay,
+                  checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+                  checkerboardOffscreenLayers: checkerboardOffscreenLayers,
+                  showSemanticsDebugger: showSemanticsDebugger,
+                  debugShowCheckedModeBanner: debugShowCheckedModeBanner,
+                  shortcuts: shortcuts,
+                  scrollBehavior: scrollBehavior,
+                );
         },
       ),
     );
