@@ -24,10 +24,7 @@ import '../routes/transitions_type.dart';
 ///
 /// another pop will change the _activePages stack to:
 /// 1) /home
-enum PopMode {
-  history,
-  page,
-}
+enum PopMode { history, page }
 
 /// Enables the user to customize the behavior when pushing multiple routes that
 /// shouldn't be duplicates
@@ -57,7 +54,7 @@ mixin IGetNavigation {
     String? id,
     String? routeName,
     bool fullscreenDialog = false,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool preventDuplicates = true,
     bool? popGesture,
@@ -79,7 +76,7 @@ mixin IGetNavigation {
     String? id,
     String? routeName,
     bool fullscreenDialog = false,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool preventDuplicates = true,
     bool? popGesture,
@@ -94,7 +91,7 @@ mixin IGetNavigation {
     bool? popGesture,
     String? id,
     String? routeName,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool fullscreenDialog = false,
     Transition? transition,
@@ -106,7 +103,7 @@ mixin IGetNavigation {
 
   Future<T?> toNamed<T>(
     String page, {
-    dynamic arguments,
+    Object? arguments,
     String? id,
     bool preventDuplicates = true,
     Map<String, String>? parameters,
@@ -114,7 +111,7 @@ mixin IGetNavigation {
 
   Future<T?> offNamed<T>(
     String page, {
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   });
@@ -122,7 +119,7 @@ mixin IGetNavigation {
   Future<T?>? offAllNamed<T>(
     String newRouteName, {
     // bool Function(GetPage route)? predicate,
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   });
@@ -130,7 +127,7 @@ mixin IGetNavigation {
   Future<T?>? offNamedUntil<T>(
     String page, {
     bool Function(GetPage route)? predicate,
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   });

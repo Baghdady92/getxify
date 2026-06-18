@@ -1,30 +1,33 @@
 import '../../../get_core/get_core.dart';
 
-/// Returns whether a dynamic value PROBABLY
+/// Returns whether a value PROBABLY
 /// has the isEmpty getter/method by checking
 /// standard dart types that contains it.
 ///
 /// This is here to for the 'DRY'
-bool? _isEmpty(dynamic value) {
+bool? _isEmpty(Object? value) {
   if (value is String) {
     return value.toString().trim().isEmpty;
   }
-  if (value is Iterable || value is Map) {
-    return value.isEmpty as bool?;
+  if (value is Iterable) {
+    return value.isEmpty;
+  }
+  if (value is Map) {
+    return value.isEmpty;
   }
   return false;
 }
 
-/// Returns whether a dynamic value PROBABLY
+/// Returns whether a value PROBABLY
 /// has the length getter/method by checking
 /// standard dart types that contains it.
 ///
 /// This is here to for the 'DRY'
-bool _hasLength(dynamic value) {
+bool _hasLength(Object? value) {
   return value is Iterable || value is String || value is Map;
 }
 
-/// Obtains a length of a dynamic value
+/// Obtains a length of a value
 /// by previously validating it's type
 ///
 /// Note: if [value] is double/int
@@ -34,14 +37,22 @@ bool _hasLength(dynamic value) {
 /// Note 2: **this may return null!**
 ///
 /// Note 3: null [value] returns null.
-int? _obtainDynamicLength(dynamic value) {
+int? _obtainDynamicLength(Object? value) {
   if (value == null) {
     // ignore: avoid_returning_null
     return null;
   }
 
   if (_hasLength(value)) {
-    return value.length as int?;
+    if (value is String) {
+      return value.length;
+    }
+    if (value is Iterable) {
+      return value.length;
+    }
+    if (value is Map) {
+      return value.length;
+    }
   }
 
   if (value is int) {
@@ -60,7 +71,7 @@ class GetUtils {
   GetUtils._();
 
   /// Checks if data is null.
-  static bool isNull(dynamic value) => value == null;
+  static bool isNull(Object? value) => value == null;
 
   /// In dart2js (in flutter v1.17) a var by default is undefined.
   /// *Use this only if you are in version <- 1.17*.
@@ -68,10 +79,10 @@ class GetUtils {
   /// "value":value==null?null:value; someVar.nil will force the null type
   /// if the var is null or undefined.
   /// `nil` taken from ObjC just to have a shorter syntax.
-  static dynamic nil(dynamic s) => s;
+  static Object? nil(Object? s) => s;
 
   /// Checks if data is null or blank (empty or only contains whitespace).
-  static bool? isNullOrBlank(dynamic value) {
+  static bool? isNullOrBlank(Object? value) {
     if (isNull(value)) {
       return true;
     }
@@ -82,7 +93,7 @@ class GetUtils {
   }
 
   /// Checks if data is null or blank (empty or only contains whitespace).
-  static bool? isBlank(dynamic value) {
+  static bool? isBlank(Object? value) {
     return _isEmpty(value);
   }
 
@@ -313,10 +324,23 @@ class GetUtils {
 
   /// Checks if all data have same value.
   /// Example: 111111 -> true, wwwww -> true, 1,1,1,1 -> true
-  static bool isOneAKind(dynamic value) {
-    if ((value is String || value is List) && !isNullOrBlank(value)!) {
+  static bool isOneAKind(Object? value) {
+    if (value is String && !isNullOrBlank(value)!) {
       final first = value[0];
-      final len = value.length as num;
+      final len = value.length;
+
+      for (var i = 0; i < len; i++) {
+        if (value[i] != first) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (value is List && !isNullOrBlank(value)!) {
+      final first = value[0];
+      final len = value.length;
 
       for (var i = 0; i < len; i++) {
         if (value[i] != first) {
@@ -354,7 +378,7 @@ class GetUtils {
   );
 
   /// Checks if length of data is GREATER than maxLength.
-  static bool isLengthGreaterThan(dynamic value, int maxLength) {
+  static bool isLengthGreaterThan(Object? value, int maxLength) {
     final length = _obtainDynamicLength(value);
 
     if (length == null) {
@@ -365,7 +389,7 @@ class GetUtils {
   }
 
   /// Checks if length of data is GREATER OR EQUAL to maxLength.
-  static bool isLengthGreaterOrEqual(dynamic value, int maxLength) {
+  static bool isLengthGreaterOrEqual(Object? value, int maxLength) {
     final length = _obtainDynamicLength(value);
 
     if (length == null) {
@@ -376,7 +400,7 @@ class GetUtils {
   }
 
   /// Checks if length of data is LESS than maxLength.
-  static bool isLengthLessThan(dynamic value, int maxLength) {
+  static bool isLengthLessThan(Object? value, int maxLength) {
     final length = _obtainDynamicLength(value);
     if (length == null) {
       return false;
@@ -386,7 +410,7 @@ class GetUtils {
   }
 
   /// Checks if length of data is LESS OR EQUAL to maxLength.
-  static bool isLengthLessOrEqual(dynamic value, int maxLength) {
+  static bool isLengthLessOrEqual(Object? value, int maxLength) {
     final length = _obtainDynamicLength(value);
 
     if (length == null) {
@@ -397,7 +421,7 @@ class GetUtils {
   }
 
   /// Checks if length of data is EQUAL to maxLength.
-  static bool isLengthEqualTo(dynamic value, int otherLength) {
+  static bool isLengthEqualTo(Object? value, int otherLength) {
     final length = _obtainDynamicLength(value);
 
     if (length == null) {
@@ -408,7 +432,7 @@ class GetUtils {
   }
 
   /// Checks if length of data is BETWEEN minLength to maxLength.
-  static bool isLengthBetween(dynamic value, int minLength, int maxLength) {
+  static bool isLengthBetween(Object? value, int minLength, int maxLength) {
     if (isNull(value)) {
       return false;
     }
@@ -685,7 +709,7 @@ class GetUtils {
 
   static void printFunction(
     String prefix,
-    dynamic value,
+    Object? value,
     String info, {
     bool isError = false,
   }) {
@@ -694,4 +718,4 @@ class GetUtils {
 }
 
 typedef PrintFunctionCallback =
-    void Function(String prefix, dynamic value, String info, {bool? isError});
+    void Function(String prefix, Object? value, String info, {bool? isError});

@@ -119,13 +119,13 @@ extension SetExtension<E> on Set<E> {
   // }
 
   /// Add [item] to [List<E>] only if [condition] is true.
-  void addIf(dynamic condition, E item) {
+  void addIf(Object? condition, E item) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) add(item);
   }
 
   /// Adds [Iterable<E>] to [List<E>] only if [condition] is true.
-  void addAllIf(dynamic condition, Iterable<E> items) {
+  void addAllIf(Object? condition, Iterable<E> items) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) addAll(items);
   }

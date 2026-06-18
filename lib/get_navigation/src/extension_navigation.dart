@@ -555,7 +555,7 @@ extension GetNavigationExt on GetInterface {
     String? id,
     String? routeName,
     bool fullscreenDialog = false,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool preventDuplicates = true,
     bool? popGesture,
@@ -623,8 +623,8 @@ extension GetNavigationExt on GetInterface {
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? toNamed<T>(
     String page, {
-    dynamic arguments,
-    dynamic id,
+    Object? arguments,
+    String? id,
     bool preventDuplicates = true,
     Map<String, String>? parameters,
   }) {
@@ -664,7 +664,7 @@ extension GetNavigationExt on GetInterface {
   /// Note: Always put a slash on the route ('/page1'), to avoid unexpected errors
   Future<T?>? offNamed<T>(
     String page, {
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   }) {
@@ -726,7 +726,7 @@ extension GetNavigationExt on GetInterface {
     String page,
     bool Function(GetPage<dynamic>)? predicate, {
     String? id,
-    dynamic arguments,
+    Object? arguments,
     Map<String, String>? parameters,
   }) {
     if (parameters != null) {
@@ -756,9 +756,9 @@ extension GetNavigationExt on GetInterface {
   /// The route transition animation is different.
   Future<T?>? offAndToNamed<T>(
     String page, {
-    dynamic arguments,
+    Object? arguments,
     String? id,
-    dynamic result,
+    Object? result,
     Map<String, String>? parameters,
   }) {
     if (parameters != null) {
@@ -803,7 +803,7 @@ extension GetNavigationExt on GetInterface {
   Future<T?>? offAllNamed<T>(
     String newRouteName, {
     // bool Function(GetPage<dynamic>)? predicate,
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   }) {
@@ -1017,7 +1017,7 @@ extension GetNavigationExt on GetInterface {
     bool? popGesture,
     String? id,
     String? routeName,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool fullscreenDialog = false,
     bool preventDuplicates = true,
@@ -1092,7 +1092,7 @@ extension GetNavigationExt on GetInterface {
     bool? popGesture,
     String? id,
     String? routeName,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool fullscreenDialog = false,
     Transition? transition,

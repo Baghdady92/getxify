@@ -355,8 +355,8 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   @override
   Future<T?> toNamed<T>(
     String page, {
-    dynamic arguments,
-    dynamic id,
+    Object? arguments,
+    String? id,
     bool preventDuplicates = true,
     Map<String, String>? parameters,
   }) async {
@@ -380,7 +380,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     String? id,
     String? routeName,
     bool fullscreenDialog = false,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool preventDuplicates = true,
     bool? popGesture,
@@ -429,7 +429,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     String? id,
     String? routeName,
     bool fullscreenDialog = false,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool preventDuplicates = true,
     bool? popGesture,
@@ -463,7 +463,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     bool? popGesture,
     String? id,
     String? routeName,
-    dynamic arguments,
+    Object? arguments,
     List<BindingsInterface> bindings = const [],
     bool fullscreenDialog = false,
     Transition? transition,
@@ -502,7 +502,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   Future<T?>? offAllNamed<T>(
     String newRouteName, {
     // bool Function(GetPage route)? predicate,
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   }) async {
@@ -521,7 +521,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   Future<T?>? offNamedUntil<T>(
     String page, {
     bool Function(GetPage route)? predicate,
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   }) async {
@@ -541,7 +541,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   @override
   Future<T?> offNamed<T>(
     String page, {
-    dynamic arguments,
+    Object? arguments,
     String? id,
     Map<String, String>? parameters,
   }) async {

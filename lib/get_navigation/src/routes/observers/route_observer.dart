@@ -177,7 +177,7 @@ class GetObserver extends NavigatorObserver {
 class Routing {
   String current;
   String previous;
-  dynamic args;
+  Object? args;
   String removed;
   Route<dynamic>? route;
   bool? isBack;

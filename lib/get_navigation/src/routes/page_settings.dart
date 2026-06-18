@@ -15,7 +15,7 @@ extension PageArgExt on BuildContext {
     return null;
   }
 
-  dynamic get arguments {
+  Object? get arguments {
     final args = settings?.arguments;
     if (args is PageSettings) {
       return args.arguments;
@@ -49,10 +49,7 @@ extension PageArgExt on BuildContext {
 }
 
 class PageSettings extends RouteSettings {
-  PageSettings(
-    this.uri, [
-    Object? arguments,
-  ]) : super(arguments: arguments);
+  PageSettings(this.uri, [Object? arguments]) : super(arguments: arguments);
 
   @override
   String get name => '$uri';
@@ -72,14 +69,8 @@ class PageSettings extends RouteSettings {
   @override
   String toString() => name;
 
-  PageSettings copy({
-    Uri? uri,
-    Object? arguments,
-  }) {
-    return PageSettings(
-      uri ?? this.uri,
-      arguments ?? this.arguments,
-    );
+  PageSettings copy({Uri? uri, Object? arguments}) {
+    return PageSettings(uri ?? this.uri, arguments ?? this.arguments);
   }
 
   @override

@@ -24,8 +24,11 @@ class RxList<E> extends GetListenable<List<E>>
   }
 
   /// Generates a list of values.
-  factory RxList.generate(int length, E Function(int index) generator,
-      {bool growable = true}) {
+  factory RxList.generate(
+    int length,
+    E Function(int index) generator, {
+    bool growable = true,
+  }) {
     return RxList(List.generate(length, generator, growable: growable));
   }
 
@@ -145,13 +148,13 @@ extension ListExtension<E> on List<E> {
   }
 
   /// Add [item] to [List<E>] only if [condition] is true.
-  void addIf(dynamic condition, E item) {
+  void addIf(Object? condition, E item) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) add(item);
   }
 
   /// Adds [Iterable<E>] to [List<E>] only if [condition] is true.
-  void addAllIf(dynamic condition, Iterable<E> items) {
+  void addAllIf(Object? condition, Iterable<E> items) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) addAll(items);
   }

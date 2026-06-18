@@ -42,7 +42,7 @@ class RouteDecoder {
 
   Map<String, String> get parameters => pageSettings?.params ?? {};
 
-  dynamic get args {
+  Object? get args {
     return pageSettings?.arguments;
   }
 
