@@ -600,24 +600,16 @@ MaterialApp(
 );
 ```
 
-You can create _Global Settings_ for `Get`. Just add `Get.config` to your code before pushing any route.
-Or do it directly in your `GetMaterialApp`
+You can configure `Get` directly in your `GetMaterialApp`:
 
 ```dart
 GetMaterialApp(
   enableLog: true,
   defaultTransition: Transition.fade,
   opaqueRoute: Get.isOpaqueRouteDefault,
-  popGesture: Get.isPopGestureEnable,
-  transitionDuration: Get.defaultDurationTransition,
-  defaultGlobalState: Get.defaultGlobalState,
+  popGesture: Get.defaultPopGesture,
+  transitionDuration: Get.defaultTransitionDuration,
 );
-
-Get.config(
-  enableLog = true,
-  defaultPopGesture = true,
-  defaultTransition = Transitions.cupertino
-)
 ```
 
 You can optionally redirect all the logging messages from `Get`.
