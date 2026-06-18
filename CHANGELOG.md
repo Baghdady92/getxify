@@ -1,3 +1,25 @@
+## 1.0.1
+
+### Code Quality Improvements
+
+- **Internal codebase improvements** - Enhanced code structure and organization
+- **Removed dead code** - Cleaned up commented-out and unused code across multiple modules
+- **Added safety checks** - Improved widget lifecycle checks to prevent errors
+- **Enhanced API documentation** - Added comprehensive documentation comments for better developer experience
+
+### Feature Updates
+
+- **BottomSheet** - Added new parameters to align with latest Flutter API
+- **Snackbar** - Added new parameters to align with latest Flutter API
+- **Router configuration** - Improved initialization logic for better compatibility
+
+### Testing
+
+- **Expanded test coverage** - Added more tests to ensure stability
+- All 222 tests passing
+
+---
+
 ## 1.0.0
 
 ### Initial Release - GetXify

@@ -2,44 +2,58 @@ import 'package:flutter/widgets.dart';
 
 import '../router_report.dart';
 
+/// A customized [PopupRoute] used to display a modal dialog.
+///
+/// This route is responsible for rendering the dialog content and handling
+/// transition animations, barrier effects, and dismiss gestures.
 class GetDialogRoute<T> extends PopupRoute<T> {
+  /// Constructs a [GetDialogRoute].
+  ///
+  /// Requires a [pageBuilder] function to build the dialog widget.
+  /// [barrierDismissible], [barrierLabel], [barrierColor], [transitionDuration],
+  /// [transitionBuilder], and [settings] can be customized as needed.
   GetDialogRoute({
-    required RoutePageBuilder pageBuilder,
-    this._barrierDismissible = true,
-    this._barrierLabel,
-    this._barrierColor = const Color(0x80000000),
-    this._transitionDuration = const Duration(milliseconds: 200),
-    this._transitionBuilder,
+    required this.pageBuilder,
+    this.barrierDismissible = true,
+    this.barrierLabel,
+    this.barrierColor = const Color(0x80000000),
+    this.transitionDuration = const Duration(milliseconds: 200),
+    this.transitionBuilder,
     super.settings,
-  }) : widget = pageBuilder {
+    this.anchorPoint,
+    this._traversalEdgeBehavior,
+  }) {
     RouterReportManager.instance.reportCurrentRoute(this);
   }
 
-  final RoutePageBuilder widget;
+  final RoutePageBuilder pageBuilder;
 
   @override
-  bool get barrierDismissible => _barrierDismissible;
-  final bool _barrierDismissible;
+  final bool barrierDismissible;
+
+  @override
+  final String? barrierLabel;
+
+  @override
+  final Color barrierColor;
+
+  @override
+  final Duration transitionDuration;
+
+  final RouteTransitionsBuilder? transitionBuilder;
+
+  final Offset? anchorPoint;
+
+  final TraversalEdgeBehavior? _traversalEdgeBehavior;
+  @override
+  TraversalEdgeBehavior? get traversalEdgeBehavior =>
+      _traversalEdgeBehavior ?? super.traversalEdgeBehavior;
 
   @override
   void dispose() {
     RouterReportManager.instance.reportRouteDispose(this);
     super.dispose();
   }
-
-  @override
-  String? get barrierLabel => _barrierLabel;
-  final String? _barrierLabel;
-
-  @override
-  Color get barrierColor => _barrierColor;
-  final Color _barrierColor;
-
-  @override
-  Duration get transitionDuration => _transitionDuration;
-  final Duration _transitionDuration;
-
-  final RouteTransitionsBuilder? _transitionBuilder;
 
   @override
   Widget buildPage(
@@ -50,7 +64,7 @@ class GetDialogRoute<T> extends PopupRoute<T> {
     return Semantics(
       scopesRoute: true,
       explicitChildNodes: true,
-      child: widget(context, animation, secondaryAnimation),
+      child: pageBuilder(context, animation, secondaryAnimation),
     );
   }
 
@@ -61,12 +75,12 @@ class GetDialogRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (_transitionBuilder == null) {
+    if (transitionBuilder == null) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: Curves.linear),
         child: child,
       );
     } // Some default transition
-    return _transitionBuilder(context, animation, secondaryAnimation, child);
+    return transitionBuilder!(context, animation, secondaryAnimation, child);
   }
 }

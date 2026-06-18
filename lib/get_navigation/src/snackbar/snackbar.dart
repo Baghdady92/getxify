@@ -214,7 +214,7 @@ class GetSnackBar extends StatefulWidget {
   });
 
   @override
-  State createState() => GetSnackBarState();
+  State<GetSnackBar> createState() => GetSnackBarState();
 
   /// Show the snack. It's call [SnackbarStatus.OPENING] state
   /// followed by [SnackbarStatus.OPEN]
@@ -415,6 +415,7 @@ You need to either use message[String], or messageText[Widget] or define a userI
     );
 
     _fadeController!.addStatusListener((status) {
+      if (!mounted) return;
       if (status == AnimationStatus.completed) {
         _fadeController!.reverse();
       }
@@ -567,7 +568,9 @@ You need to either use message[String], or messageText[Widget] or define a userI
     }
   }
 
-  void _updateProgress() => setState(() {});
+  void _updateProgress() {
+    if (mounted) setState(() {});
+  }
 }
 
 enum RowStyle {

@@ -154,13 +154,22 @@ void main() {
     Get.reset();
   });
 
-  test('Get.create with abstract class test', () async {
+  test('Get.spawn with abstract class test', () async {
     Get.spawn<Service>(() => Api());
     final ct1 = Get.find<Service>();
     final ct2 = Get.find<Service>();
-    // expect(ct1 is Service, true);
-    // expect(ct2 is Service, true);
     expect(ct1 == ct2, false);
+    Get.reset();
+  });
+
+  test('Get.putOrFind test', () async {
+    final ct1 = Get.putOrFind<Controller>(() => Controller());
+    expect(ct1.init, 1);
+    expect(Get.isRegistered<Controller>(), true);
+
+    final ct2 = Get.putOrFind<Controller>(() => Controller());
+    expect(ct2, ct1);
+    expect(ct2.init, 1);
     Get.reset();
   });
 

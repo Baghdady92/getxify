@@ -65,15 +65,33 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  // testWidgets(
-  //   "GetMaterialApp with debugShowMaterialGrid null",
-  //   (tester) async {
-  //     expect(
-  //       () => GetMaterialApp(
-  //         debugShowMaterialGrid: null,
-  //       ),
-  //       throwsAssertionError,
-  //     );
-  //   },
-  // );
+  testWidgets("Get.bottomSheet with all properties smoke test", (tester) async {
+    await tester.pumpWidget(Wrapper(child: Container()));
+    await tester.pump();
+
+    Get.bottomSheet(
+      const Text('Test BottomSheet'),
+      backgroundColor: Colors.red,
+      elevation: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      clipBehavior: Clip.antiAlias,
+      barrierColor: Colors.black54,
+      ignoreSafeArea: false,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      isDismissible: false,
+      enableDrag: false,
+      enterBottomSheetDuration: const Duration(milliseconds: 100),
+      exitBottomSheetDuration: const Duration(milliseconds: 100),
+      curve: Curves.easeIn,
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('Test BottomSheet'), findsOneWidget);
+    expect(Get.isBottomSheetOpen, true);
+
+    Get.backLegacy();
+    await tester.pumpAndSettle();
+    expect(Get.isBottomSheetOpen, false);
+  });
 }

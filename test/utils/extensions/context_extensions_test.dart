@@ -5,7 +5,7 @@ import 'package:getxify/getxify.dart';
 import '../../navigation/utils/wrapper.dart';
 
 void main() {
-  testWidgets("Get.defaultDialog smoke test", (tester) async {
+  testWidgets("BuildContext extensions test", (tester) async {
     await tester.pumpWidget(Wrapper(child: Container()));
     await tester.pumpAndSettle();
 

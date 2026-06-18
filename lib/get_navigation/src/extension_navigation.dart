@@ -38,11 +38,15 @@ extension ExtensionBottomSheet on GetInterface {
     Duration? enterBottomSheetDuration,
     Duration? exitBottomSheetDuration,
     Curve? curve,
+    bool? showDragHandle,
+    Color? dragHandleColor,
+    Size? dragHandleSize,
+    Color? shadowColor,
+    Color? surfaceTintColor,
   }) {
     return Navigator.of(overlayContext!, rootNavigator: useRootNavigator).push(
       GetModalBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
-        isPersistent: persistent,
         theme: Theme.of(key.currentContext!),
         isScrollControlled: isScrollControlled,
 
@@ -64,6 +68,11 @@ extension ExtensionBottomSheet on GetInterface {
         exitBottomSheetDuration:
             exitBottomSheetDuration ?? const Duration(milliseconds: 200),
         curve: curve,
+        showDragHandle: showDragHandle,
+        dragHandleColor: dragHandleColor,
+        dragHandleSize: dragHandleSize,
+        shadowColor: shadowColor,
+        surfaceTintColor: surfaceTintColor,
       ),
     );
   }
@@ -85,6 +94,8 @@ extension ExtensionDialog on GetInterface {
     Curve? transitionCurve,
     String? name,
     RouteSettings? routeSettings,
+    Offset? anchorPoint,
+    TraversalEdgeBehavior? traversalEdgeBehavior,
     String? id,
   }) {
     assert(debugCheckHasMaterialLocalizations(context!));
@@ -119,6 +130,8 @@ extension ExtensionDialog on GetInterface {
       navigatorKey: navigatorKey,
       routeSettings:
           routeSettings ?? RouteSettings(arguments: arguments, name: name),
+      anchorPoint: anchorPoint,
+      traversalEdgeBehavior: traversalEdgeBehavior,
       id: id,
     );
   }
@@ -133,6 +146,8 @@ extension ExtensionDialog on GetInterface {
     RouteTransitionsBuilder? transitionBuilder,
     GlobalKey<NavigatorState>? navigatorKey,
     RouteSettings? routeSettings,
+    Offset? anchorPoint,
+    TraversalEdgeBehavior? traversalEdgeBehavior,
     String? id,
   }) {
     assert(!barrierDismissible || barrierLabel != null);
@@ -152,6 +167,8 @@ extension ExtensionDialog on GetInterface {
         transitionDuration: transitionDuration,
         transitionBuilder: transitionBuilder,
         settings: routeSettings,
+        anchorPoint: anchorPoint,
+        traversalEdgeBehavior: traversalEdgeBehavior,
       ),
     );
   }
@@ -181,14 +198,11 @@ extension ExtensionDialog on GetInterface {
     String middleText = "\n",
     TextStyle? middleTextStyle,
     double radius = 20.0,
-    //   ThemeData themeData,
     List<Widget>? actions,
-
-    // onWillPop Scope
     PopInvokedWithResultCallback<T>? onWillPop,
-
-    // the navigator used to push the dialog
     GlobalKey<NavigatorState>? navigatorKey,
+    Offset? anchorPoint,
+    TraversalEdgeBehavior? traversalEdgeBehavior,
   }) {
     var leanCancel = onCancel != null || textCancel != null;
     var leanConfirm = onConfirm != null || textConfirm != null;
@@ -308,6 +322,8 @@ extension ExtensionDialog on GetInterface {
           : baseAlertDialog,
       barrierDismissible: barrierDismissible,
       navigatorKey: navigatorKey,
+      anchorPoint: anchorPoint,
+      traversalEdgeBehavior: traversalEdgeBehavior,
       id: id,
     );
   }

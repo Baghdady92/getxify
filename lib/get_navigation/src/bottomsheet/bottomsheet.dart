@@ -3,13 +3,21 @@ import 'package:flutter/material.dart';
 import '../../../getxify.dart';
 import '../router_report.dart';
 
+/// A customized [PopupRoute] used to display a modal bottom sheet.
+/// 
+/// This route is responsible for rendering the [BottomSheet] widget with 
+/// appropriate transition animations, barrier colors, and gesture handling.
 class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
+  /// Constructs a [GetModalBottomSheetRoute].
+  ///
+  /// This requires a [builder] that returns the widget content of the bottom sheet.
+  /// Standard parameters like [backgroundColor], [elevation], and [shape] will fall back
+  /// to the closest [BottomSheetThemeData] if omitted.
   GetModalBottomSheetRoute({
     this.builder,
     this.theme,
     this.barrierLabel,
     this.backgroundColor,
-    this.isPersistent,
     this.elevation,
     this.shape,
     this.removeTop = true,
@@ -17,6 +25,11 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
     this.modalBarrierColor,
     this.isDismissible = true,
     this.enableDrag = true,
+    this.showDragHandle,
+    this.dragHandleColor,
+    this.dragHandleSize,
+    this.shadowColor,
+    this.surfaceTintColor,
     required this.isScrollControlled,
     super.settings,
     this.enterBottomSheetDuration = const Duration(milliseconds: 250),
@@ -25,7 +38,6 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
   }) {
     RouterReportManager.instance.reportCurrentRoute(this);
   }
-  final bool? isPersistent;
   final WidgetBuilder? builder;
   final ThemeData? theme;
   final bool isScrollControlled;
@@ -36,11 +48,14 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
   final Color? modalBarrierColor;
   final bool isDismissible;
   final bool enableDrag;
-  // final String name;
+  final bool? showDragHandle;
+  final Color? dragHandleColor;
+  final Size? dragHandleSize;
+  final Color? shadowColor;
+  final Color? surfaceTintColor;
   final Duration enterBottomSheetDuration;
   final Duration exitBottomSheetDuration;
   final Curve? curve;
-  // remove safearea from top
   final bool removeTop;
 
   @override
@@ -111,6 +126,11 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
           clipBehavior: clipBehavior,
           isScrollControlled: isScrollControlled,
           enableDrag: enableDrag,
+          showDragHandle: showDragHandle,
+          dragHandleColor: dragHandleColor,
+          dragHandleSize: dragHandleSize,
+          shadowColor: shadowColor,
+          surfaceTintColor: surfaceTintColor,
         ),
       ),
     );
@@ -129,9 +149,12 @@ class _GetModalBottomSheet<T> extends StatefulWidget {
     this.clipBehavior,
     this.isScrollControlled = false,
     this.enableDrag = true,
-    this.isPersistent = false,
+    this.showDragHandle,
+    this.dragHandleColor,
+    this.dragHandleSize,
+    this.shadowColor,
+    this.surfaceTintColor,
   });
-  final bool isPersistent;
   final GetModalBottomSheetRoute<T>? route;
   final bool isScrollControlled;
   final Color? backgroundColor;
@@ -139,6 +162,11 @@ class _GetModalBottomSheet<T> extends StatefulWidget {
   final ShapeBorder? shape;
   final Clip? clipBehavior;
   final bool enableDrag;
+  final bool? showDragHandle;
+  final Color? dragHandleColor;
+  final Size? dragHandleSize;
+  final Color? shadowColor;
+  final Color? surfaceTintColor;
 
   @override
   _GetModalBottomSheetState<T> createState() => _GetModalBottomSheetState<T>();
@@ -181,37 +209,20 @@ class _GetModalBottomSheetState<T> extends State<_GetModalBottomSheet<T>> {
                 animationValue,
                 widget.isScrollControlled,
               ),
-              child: widget.isPersistent == false
-                  ? BottomSheet(
-                      animationController: widget.route!._animationController,
-                      onClosing: () {
-                        if (widget.route!.isCurrent) {
-                          Navigator.pop(context);
-                        }
-                      },
-                      builder: widget.route!.builder!,
-                      backgroundColor: widget.backgroundColor,
-                      elevation: widget.elevation,
-                      shape: widget.shape,
-                      clipBehavior: widget.clipBehavior,
-                      enableDrag: widget.enableDrag,
-                    )
-                  : Scaffold(
-                      bottomSheet: BottomSheet(
-                        animationController: widget.route!._animationController,
-                        onClosing: () {
-                          // if (widget.route.isCurrent) {
-                          //   Navigator.pop(context);
-                          // }
-                        },
-                        builder: widget.route!.builder!,
-                        backgroundColor: widget.backgroundColor,
-                        elevation: widget.elevation,
-                        shape: widget.shape,
-                        clipBehavior: widget.clipBehavior,
-                        enableDrag: widget.enableDrag,
-                      ),
-                    ),
+              child: BottomSheet(
+                animationController: widget.route!._animationController,
+                onClosing: () {
+                  if (widget.route!.isCurrent) {
+                    Navigator.pop(context);
+                  }
+                },
+                builder: widget.route!.builder!,
+                backgroundColor: widget.backgroundColor,
+                elevation: widget.elevation,
+                shape: widget.shape,
+                clipBehavior: widget.clipBehavior,
+                enableDrag: widget.enableDrag,
+              ),
             ),
           ),
         );

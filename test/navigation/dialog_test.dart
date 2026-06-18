@@ -116,6 +116,30 @@ void main() {
       expect(find.byType(YourDialogWidget), findsOneWidget);
     });
   });
+
+  testWidgets("Get.dialog with all properties smoke test", (tester) async {
+    await tester.pumpWidget(Wrapper(child: Container()));
+    await tester.pump();
+
+    Get.dialog(
+      const YourDialogWidget(),
+      barrierDismissible: false,
+      barrierColor: Colors.red,
+      useSafeArea: false,
+      transitionDuration: const Duration(milliseconds: 100),
+      transitionCurve: Curves.easeIn,
+      name: 'TestDialog',
+      id: 'test_id',
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.byType(YourDialogWidget), findsOneWidget);
+    expect(Get.isDialogOpen, true);
+
+    Get.backLegacy();
+    await tester.pumpAndSettle();
+    expect(Get.isDialogOpen, false);
+  });
 }
 
 class YourDialogWidget extends StatelessWidget {

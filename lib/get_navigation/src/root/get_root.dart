@@ -513,7 +513,14 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     });
   }
 
-  GlobalKey<NavigatorState> get key => rootDelegate.navigatorKey;
+  late final GlobalKey<NavigatorState> _fallbackKey = GlobalKey<NavigatorState>();
+
+  GlobalKey<NavigatorState> get key {
+    if (config.routerConfig != null) {
+      return config.navigatorKey ?? _fallbackKey;
+    }
+    return config.navigatorKey ?? rootDelegate.navigatorKey;
+  }
 
   GetDelegate get rootDelegate => config.routerDelegate as GetDelegate;
 
@@ -521,7 +528,9 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
       config.routeInformationParser!;
 
   GlobalKey<NavigatorState>? addKey(GlobalKey<NavigatorState> newKey) {
-    rootDelegate.navigatorKey = newKey;
+    if (config.routerConfig == null) {
+      rootDelegate.navigatorKey = newKey;
+    }
     return key;
   }
 
@@ -529,6 +538,7 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
 
   GetDelegate? nestedKey(String? key) {
     if (key == null) {
+      if (config.routerConfig != null) return null;
       return rootDelegate;
     }
     keys.putIfAbsent(
