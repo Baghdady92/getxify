@@ -73,7 +73,6 @@ class GetPageRoute<T> extends PageRoute<T>
 
   final GetPageBuilder? page;
   final String? routeName;
-  //final String reference;
   final CustomTransition? customTransition;
   final List<BindingsInterface> bindings;
   final Map<String, String>? parameter;

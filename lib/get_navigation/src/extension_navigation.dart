@@ -43,7 +43,6 @@ extension ExtensionBottomSheet on GetInterface {
       GetModalBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
         isPersistent: persistent,
-        // theme: Theme.of(key.currentContext, shadowThemeOnly: true),
         theme: Theme.of(key.currentContext!),
         isScrollControlled: isScrollControlled,
 
@@ -90,7 +89,6 @@ extension ExtensionDialog on GetInterface {
   }) {
     assert(debugCheckHasMaterialLocalizations(context!));
 
-    //  final theme = Theme.of(context, shadowThemeOnly: true);
     final theme = Theme.of(context!);
     return generalDialog<T>(
       pageBuilder: (buildContext, animation, secondaryAnimation) {
@@ -512,7 +510,6 @@ extension ExtensionSnackbar on GetInterface {
     if (instantInit) {
       controller.show();
     } else {
-      //routing.isSnackbar = true;
       Engine.instance.addPostFrameCallback((_) {
         controller.show();
       });
@@ -585,26 +582,6 @@ extension GetNavigationExt on GetInterface {
     );
   }
 
-  //   GetPageBuilder _resolvePage(dynamic page, String method) {
-  //     if (page is GetPageBuilder) {
-  //       return page;
-  //     } else if (page is Widget) {
-  //       Get.log(
-  //           '''WARNING, consider using: "Get.$method(() => Page())"
-  //instead of "Get.$method(Page())".
-  // Using a widget function instead of a widget fully guarantees that the widget
-  //and its controllers will be removed from memory when they are no longer used.
-  //       ''');
-  //       return () => page;
-  //     } else if (page is String) {
-  //       throw '''Unexpected String,
-  // use toNamed() instead''';
-  //     } else {
-  //       throw '''Unexpected format,
-  // you can only use widgets and widget functions here''';
-  //     }
-  //   }
-
   /// **Navigation.pushNamed()** shortcut.<br><br>
   ///
   /// Pushes a new named `page` to the stack.
@@ -628,10 +605,6 @@ extension GetNavigationExt on GetInterface {
     bool preventDuplicates = true,
     Map<String, String>? parameters,
   }) {
-    // if (preventDuplicates && page == currentRoute) {
-    //   return null;
-    // }
-
     if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
       page = uri.toString();
@@ -668,10 +641,6 @@ extension GetNavigationExt on GetInterface {
     String? id,
     Map<String, String>? parameters,
   }) {
-    // if (preventDuplicates && page == currentRoute) {
-    //   return null;
-    // }
-
     if (parameters != null) {
       final uri = Uri(path: page, queryParameters: parameters);
       page = uri.toString();
@@ -699,8 +668,6 @@ extension GetNavigationExt on GetInterface {
   /// `Get.until((route) => !Get.isDialogOpen())`, to make sure the
   /// dialog is closed
   void until(bool Function(GetPage<dynamic>) predicate, {String? id}) {
-    // if (key.currentState.mounted) // add this if appear problems on future with route navigate
-    // when widget don't mounted
     return searchDelegate(id).backUntil(predicate);
   }
 
@@ -814,7 +781,6 @@ extension GetNavigationExt on GetInterface {
 
     return searchDelegate(id).offAllNamed<T>(
       newRouteName,
-      //predicate: predicate ?? (_) => false,
       arguments: arguments,
       id: id,
       parameters: parameters,
@@ -860,16 +826,6 @@ extension GetNavigationExt on GetInterface {
     }
   }
 
-  /// Pop the current page, snackbar, dialog or bottomsheet in the stack
-  ///
-  /// if your set [closeOverlays] to true, Get.back() will close the
-  /// currently open snackbar/dialog/bottomsheet AND the current page
-  ///
-  /// [id] is for when you are using nested navigation,
-  /// as explained in documentation
-  ///
-  /// It has the advantage of not needing context, so you can call
-  /// from your business logic.
   void backLegacy<T>({
     T? result,
     bool closeOverlays = false,

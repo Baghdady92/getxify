@@ -11,11 +11,7 @@ class GetNavigator extends Navigator {
     super.initialRoute,
     super.restorationScopeId,
   }) : super(
-         observers: [
-           // GetObserver(null, Get.routing),
-           HeroController(),
-           ...?observers,
-         ],
+         observers: [HeroController(), ...?observers],
          transitionDelegate:
              transitionDelegate ?? const DefaultTransitionDelegate<dynamic>(),
        );

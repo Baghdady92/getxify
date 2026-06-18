@@ -239,6 +239,5 @@ class PageRedirect {
 
     final parameters = Map<String, String?>.from(Get.parameters);
     parameters.addEntries(route.parameters!.entries);
-    // Get.parameters = parameters;
   }
 }

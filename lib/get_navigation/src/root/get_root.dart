@@ -420,11 +420,6 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
       config = config.copyWith(defaultTransition: getThemeTransition());
     }
 
-    // defaultOpaqueRoute = config.opaqueRoute ?? true;
-    // defaultPopGesture = config.popGesture ?? GetPlatform.isIOS;
-    // defaultTransitionDuration =
-    //     config.transitionDuration ?? Duration(milliseconds: 300);
-
     Future(() => onReady());
   }
 

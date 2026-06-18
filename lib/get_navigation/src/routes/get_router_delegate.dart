@@ -150,12 +150,6 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     _activePages.add(res);
   }
 
-  // Future<T?> _unsafeHistoryRemove<T>(RouteDecoder config, T result) async {
-  //   var index = _activePages.indexOf(config);
-  //   if (index >= 0) return _unsafeHistoryRemoveAt(index, result);
-  //   return null;
-  // }
-
   Future<T?> _unsafeHistoryRemoveAt<T>(int index, T result) async {
     if (index == _activePages.length - 1 && _activePages.length > 1) {
       //removing WILL update the current route
@@ -244,13 +238,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
       //create a new route with the remaining tree branch
       final res = await _popHistory<T>(result);
-      await _pushHistory(
-        RouteDecoder(
-          remaining.toList(),
-          null,
-          //TOOD: persist state??
-        ),
-      );
+      await _pushHistory(RouteDecoder(remaining.toList(), null));
       return res;
     } else {
       //remove entire entry
@@ -391,10 +379,6 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
         PreventDuplicateHandlingMode.reorderRoutes,
   }) async {
     routeName ??= _cleanRouteName("/${page.runtimeType}");
-    // if (preventDuplicateHandlingMode ==
-    //PreventDuplicateHandlingMode.Recreate) {
-    //   routeName = routeName + page.hashCode.toString();
-    // }
 
     final getPage = GetPage<T>(
       name: routeName,
@@ -737,8 +721,6 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   Future<T?> _push<T>(RouteDecoder decoder, {bool rebuildStack = true}) async {
     var res = await runMiddleware(decoder);
     if (res == null) return null;
-    // final res = mid ?? decoder;
-    // if (res == null) res = decoder;
 
     final preventDuplicateHandlingMode =
         res.route?.preventDuplicateHandlingMode ??
