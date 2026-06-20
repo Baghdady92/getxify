@@ -86,6 +86,42 @@ class Other extends StatelessWidget {
 }
 ```
 
+## Example App
+
+A comprehensive example application demonstrating the key features of GetXify is available in the `example/` directory. This example showcases:
+
+### Features Demonstrated
+
+- **Nested Routing** - Complex route structure with parent-child relationships using `GetRouterOutlet`
+- **Route Guards** - Authentication middleware (`EnsureAuthMiddleware`, `EnsureNotAuthedMiddleware`)
+- **Named Routes** - Type-safe route navigation using the `Routes` class
+- **Route Parameters** - Dynamic route parameters (e.g., product details)
+- **Transitions** - Various page transitions (cupertino, size, etc.)
+- **Reactive State** - Using `.obs` for reactive variables in controllers
+- **Services** - Global state management with `GetxService`
+- **Dependency Injection** - Bindings with lazy loading using `Binding` class
+- **Clean Architecture** - Separation of concerns with organized modules
+
+### Running the Example
+
+```bash
+cd example
+flutter pub get
+flutter run
+```
+
+### Project Structure
+
+The example follows a clean architecture pattern with:
+
+- `app/modules/` - Feature modules (dashboard, home, login, products, profile, etc.)
+- `app/middleware/` - Route guards and middleware
+- `app/routes/` - Route configuration
+- `services/` - Global services (authentication)
+- `models/` - Data models
+
+Each module contains its own bindings, controllers, and views following the MVVM pattern.
+
 ## Documentation
 
 For detailed documentation on all features, please refer to the official [GetX documentation](https://github.com/jonataslaw/getx).

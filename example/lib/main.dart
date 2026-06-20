@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:getxify/getxify.dart';
+
+import './services/auth_service.dart';
+import 'app/routes/app_pages.dart';
 
 void main() {
-  runApp(const MainApp());
-}
-
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
-    );
-  }
+  runApp(
+    GetMaterialApp(
+      title: "GetXify Example App",
+      binds: [Bind.put(AuthService())],
+      getPages: AppPages.routes,
+      initialRoute: AppPages.initial,
+    ),
+  );
 }
