@@ -1,4 +1,3 @@
-// ignore: prefer_mixin
 import 'package:flutter/widgets.dart';
 
 import '../../../instance_manager.dart';
@@ -22,7 +21,6 @@ import 'list_notifier.dart';
 ///   }
 /// }
 /// ```
-// ignore: prefer_mixin
 abstract class GetxController extends ListNotifier with GetLifeCycleMixin {
   /// Notifies listeners to update the UI.
   ///
@@ -220,9 +218,7 @@ abstract class SuperController<T> extends FullLifeCycleController
 /// }
 /// ```
 abstract class FullLifeCycleController extends GetxController
-    with
-        // ignore: prefer_mixin
-        WidgetsBindingObserver {}
+    with WidgetsBindingObserver {}
 
 /// A mixin that provides full lifecycle callbacks for the controller.
 ///

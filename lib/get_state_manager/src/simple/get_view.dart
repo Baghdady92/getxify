@@ -20,7 +20,7 @@ import 'get_widget_cache.dart';
 ///   @override
 ///   final String tag = "myTag";
 ///
-///   AwesomeView({Key key}):super(key:key);
+///   AwesomeView({super.key});
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
@@ -62,8 +62,6 @@ abstract class GetWidget<S extends GetLifeCycleMixin> extends GetWidgetCache {
     return controller as S;
   }
 
-  // static final _cache = <GetWidget, GetLifeCycleBase>{};
-
   static final _cache = Expando<GetLifeCycleMixin>();
 
   @protected
@@ -99,7 +97,6 @@ class _GetCache<S extends GetLifeCycleMixin> extends WidgetCache<GetWidget<S>> {
         widget!.controller.onDelete();
         Get.log('"${widget!.controller.runtimeType}" onClose() called');
         Get.log('"${widget!.controller.runtimeType}" deleted from memory');
-        // GetWidget._cache[widget!] = null;
       });
     }
     info = null;

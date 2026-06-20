@@ -1,3 +1,19 @@
+## 1.0.2
+
+### Code Quality Improvements
+
+- **Enhanced documentation** - Added comprehensive doc comments to get_state_manager module (list_notifier, rx_notifier, get_responsive, rx_getx_widget, mixin_builder, simple_builder)
+- **Code cleanup** - Removed dead/commented code across get_state_manager files
+- **Modernized patterns** - Updated constructor patterns to use `super.key` in doc examples
+- **Removed outdated lint ignores** - Cleaned up unnecessary lint suppression comments
+- **Fixed field overrides** - Properly fixed field override issue in \_FactoryBind using super parameters
+
+### Testing
+
+- All 222 tests passing
+
+---
+
 ## 1.0.1
 
 ### Code Quality Improvements
@@ -53,6 +69,7 @@ If you were using GetX and want to migrate to GetXify:
 ### Features
 
 GetXify maintains all the core features of GetX:
+
 - State Management (Reactive and Simple)
 - Route Management (Navigation without context)
 - Dependency Management (Dependency injection)

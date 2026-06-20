@@ -3,24 +3,45 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:getxify/get_common/obx_error.dart';
 
-// This callback remove the listener on addListener function
+/// Callback function to remove a listener.
+///
+/// This is returned by [addListener] and can be called to remove
+/// the listener from the notifier.
 typedef Disposer = void Function();
 
-// replacing StateSetter, return if the Widget is mounted for extra validation.
-// if it brings overhead the extra call,
+/// Callback function to update state.
+///
+/// This is used to trigger widget rebuilds when state changes.
 typedef GetStateUpdate = void Function();
 
+/// A notifier that combines single and group listener capabilities.
+///
+/// This class extends [Listenable] and provides both single listener
+/// functionality (via [ListNotifierSingleMixin]) and group listener
+/// functionality (via [ListNotifierGroupMixin]). It's the base notifier
+/// used by GetX controllers.
 class ListNotifier extends Listenable
     with ListNotifierSingleMixin, ListNotifierGroupMixin {}
 
-/// A Notifier with single listeners
+/// A notifier with single listener support.
+///
+/// This is a type alias for [ListNotifier] with only the
+/// [ListNotifierSingleMixin] mixed in, providing basic single
+/// listener functionality.
 class ListNotifierSingle = ListNotifier with ListNotifierSingleMixin;
 
-/// A notifier with group of listeners identified by id
+/// A notifier with group listener support identified by ID.
+///
+/// This is a type alias for [ListNotifier] with only the
+/// [ListNotifierGroupMixin] mixed in, providing group listener
+/// functionality where listeners can be grouped by ID.
 class ListNotifierGroup = ListNotifier with ListNotifierGroupMixin;
 
-/// This mixin add to Listenable the addListener, removerListener and
-/// containsListener implementation
+/// Mixin that adds single listener functionality to [Listenable].
+///
+/// This mixin provides the core listener management for a single
+/// listener group, including [addListener], [removeListener], and
+/// [containsListener] methods.
 mixin ListNotifierSingleMixin on Listenable {
   List<GetStateUpdate>? _updaters = <GetStateUpdate>[];
 
@@ -41,17 +62,28 @@ mixin ListNotifierSingleMixin on Listenable {
     _updaters!.remove(listener);
   }
 
+  /// Notifies all listeners to update.
+  ///
+  /// This method triggers all registered listeners to call their
+  /// update callbacks. It's typically called when the state changes.
   @protected
   void refresh() {
     assert(_debugAssertNotDisposed());
     _notifyUpdate();
   }
 
+  /// Reports that this notifier was read.
+  ///
+  /// This is used by the reactive system to track dependencies.
   @protected
   void reportRead() {
     Notifier.instance.read(this);
   }
 
+  /// Reports a disposer callback to the global notifier.
+  ///
+  /// This is used to register cleanup callbacks that will be
+  /// called when the notifier is disposed.
   @protected
   void reportAdd(VoidCallback disposer) {
     Notifier.instance.add(disposer);
@@ -80,11 +112,16 @@ mixin ListNotifierSingleMixin on Listenable {
     return true;
   }
 
+  /// Returns the number of active listeners.
   int get listenersLength {
     assert(_debugAssertNotDisposed());
     return _updaters!.length;
   }
 
+  /// Disposes the notifier and removes all listeners.
+  ///
+  /// After calling this method, the notifier can no longer be used.
+  /// Any attempt to use it will throw an error.
   @mustCallSuper
   void dispose() {
     assert(_debugAssertNotDisposed());
@@ -92,26 +129,35 @@ mixin ListNotifierSingleMixin on Listenable {
   }
 }
 
+/// Mixin that adds group listener functionality to [Listenable].
+///
+/// This mixin provides listener management where listeners can be
+/// grouped by an ID. This allows for selective updates of specific
+/// listener groups rather than all listeners.
 mixin ListNotifierGroupMixin on Listenable {
   HashMap<Object?, ListNotifierSingleMixin>? _updatersGroupIds =
       HashMap<Object?, ListNotifierSingleMixin>();
 
+  /// Notifies all listeners in a specific group.
   void _notifyGroupUpdate(Object id) {
     if (_updatersGroupIds!.containsKey(id)) {
       _updatersGroupIds![id]!._notifyUpdate();
     }
   }
 
+  /// Reports that a listener group was read.
   @protected
   void notifyGroupChildrens(Object id) {
     assert(_debugAssertNotDisposed());
     Notifier.instance.read(_updatersGroupIds![id]!);
   }
 
+  /// Checks if a listener group with the given ID exists.
   bool containsId(Object id) {
     return _updatersGroupIds?.containsKey(id) ?? false;
   }
 
+  /// Refreshes only the listeners in a specific group.
   @protected
   void refreshGroup(Object id) {
     assert(_debugAssertNotDisposed());
@@ -131,6 +177,7 @@ mixin ListNotifierGroupMixin on Listenable {
     return true;
   }
 
+  /// Removes a listener from a specific group.
   void removeListenerId(Object id, VoidCallback listener) {
     assert(_debugAssertNotDisposed());
     if (_updatersGroupIds!.containsKey(id)) {
@@ -138,6 +185,7 @@ mixin ListNotifierGroupMixin on Listenable {
     }
   }
 
+  /// Disposes all listener groups.
   @mustCallSuper
   void dispose() {
     assert(_debugAssertNotDisposed());
@@ -145,20 +193,28 @@ mixin ListNotifierGroupMixin on Listenable {
     _updatersGroupIds = null;
   }
 
+  /// Adds a listener to a specific group identified by [key].
   Disposer addListenerId(Object? key, GetStateUpdate listener) {
     _updatersGroupIds![key] ??= ListNotifierSingle();
     return _updatersGroupIds![key]!.addListener(listener);
   }
 
-  /// To dispose an [id] from future updates(), this ids are registered
-  /// by `GetBuilder()` or similar, so is a way to unlink the state change with
-  /// the Widget from the Controller.
+  /// Disposes a specific listener group.
+  ///
+  /// This removes the group from future updates. IDs are registered
+  /// by widgets like `GetBuilder()` to link state changes with
+  /// specific widgets.
   void disposeId(Object id) {
     _updatersGroupIds?[id]?.dispose();
     _updatersGroupIds!.remove(id);
   }
 }
 
+/// Singleton that manages reactive dependencies.
+///
+/// This class tracks which reactive variables are being read during
+/// a widget build and automatically sets up the necessary listeners.
+/// It's used internally by GetX's reactive system.
 class Notifier {
   Notifier._();
 
@@ -167,10 +223,12 @@ class Notifier {
 
   NotifyData? _notifyData;
 
+  /// Adds a disposer callback to the current notification data.
   void add(VoidCallback listener) {
     _notifyData?.disposers.add(listener);
   }
 
+  /// Reads a notifier and sets up automatic listener tracking.
   void read(ListNotifierSingleMixin updaters) {
     final listener = _notifyData?.updater;
     if (listener != null && !updaters.containsListener(listener)) {
@@ -179,6 +237,10 @@ class Notifier {
     }
   }
 
+  /// Executes a builder function with reactive tracking.
+  ///
+  /// This method sets up the tracking context, executes the builder,
+  /// and ensures that reactive dependencies were properly tracked.
   T append<T>(NotifyData data, T Function() builder) {
     _notifyData = data;
     final result = builder();
@@ -190,13 +252,23 @@ class Notifier {
   }
 }
 
+/// Data container for reactive notification tracking.
+///
+/// This class holds the updater callback and list of disposers
+/// that are used during reactive tracking in widgets.
 class NotifyData {
   const NotifyData({
     required this.updater,
     required this.disposers,
     this.throwException = true,
   });
+
+  /// The callback to update the widget when dependencies change.
   final GetStateUpdate updater;
+
+  /// List of disposers to clean up listeners.
   final List<VoidCallback> disposers;
+
+  /// Whether to throw an exception if no dependencies were tracked.
   final bool throwException;
 }

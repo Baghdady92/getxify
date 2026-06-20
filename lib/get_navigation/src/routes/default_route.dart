@@ -3,7 +3,10 @@ import 'package:flutter/cupertino.dart';
 import '../../../getxify.dart';
 import '../router_report.dart';
 
-@optionalTypeArgs
+/// Mixin that reports route lifecycle events to the [RouterReportManager].
+///
+/// This mixin should be applied to [State] classes to automatically report
+/// when a route becomes active (initState) and when it's disposed.
 mixin RouteReportMixin<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
@@ -18,6 +21,10 @@ mixin RouteReportMixin<T extends StatefulWidget> on State<T> {
   }
 }
 
+/// Mixin that reports route lifecycle events to the [RouterReportManager].
+///
+/// This mixin should be applied to [Route] classes to automatically report
+/// when a route is installed and when it's disposed.
 mixin PageRouteReportMixin<T> on Route<T> {
   @override
   void install() {
@@ -34,10 +41,13 @@ mixin PageRouteReportMixin<T> on Route<T> {
 
 class GetPageRoute<T> extends PageRoute<T>
     with GetPageRouteTransitionMixin<T>, PageRouteReportMixin {
-  /// Creates a page route for use in an iOS designed app.
+  /// Creates a custom page route with GetX navigation features.
   ///
-  /// The [builder], [maintainState], and [fullscreenDialog] arguments must not
-  /// be null.
+  /// This route supports custom transitions, bindings, middleware, and
+  /// route reporting. It extends [PageRoute] and adds GetX-specific
+  /// functionality for dependency injection and navigation control.
+  ///
+  /// The [page] or [settings] must be provided.
   GetPageRoute({
     super.settings,
     this.transitionDuration = const Duration(milliseconds: 300),
@@ -68,14 +78,26 @@ class GetPageRoute<T> extends PageRoute<T>
 
   @override
   final Duration transitionDuration;
+
   @override
   final Duration reverseTransitionDuration;
 
+  /// The page builder function that creates the route's content.
   final GetPageBuilder? page;
+
+  /// The name of the route for navigation and reporting.
   final String? routeName;
+
+  /// Custom transition widget for this route.
   final CustomTransition? customTransition;
+
+  /// List of binding interfaces to apply to this route.
   final List<BindingsInterface> bindings;
+
+  /// Route parameters passed as key-value pairs.
   final Map<String, String>? parameter;
+
+  /// List of direct bindings to apply.
   final List<Bind>? binds;
 
   @override
@@ -83,13 +105,23 @@ class GetPageRoute<T> extends PageRoute<T>
 
   @override
   final bool opaque;
+
+  /// Whether the route can be popped with a gesture.
   final bool? popGesture;
 
   @override
   final bool barrierDismissible;
+
+  /// The transition animation type for this route.
   final Transition? transition;
+
+  /// The animation curve for the transition.
   final Curve? curve;
+
+  /// The alignment for the transition animation.
   final Alignment? alignment;
+
+  /// Middleware to run during route lifecycle.
   final List<GetMiddleware>? middlewares;
 
   @override
@@ -101,6 +133,15 @@ class GetPageRoute<T> extends PageRoute<T>
   @override
   final bool maintainState;
 
+  /// The title of the route.
+  @override
+  final String? title;
+
+  /// Function to determine the gesture width for swipe-to-pop.
+  @override
+  final double Function(BuildContext context)? gestureWidth;
+
+  /// Runner for executing middleware callbacks.
   final MiddlewareRunner _middlewareRunner;
 
   @override
@@ -112,6 +153,11 @@ class GetPageRoute<T> extends PageRoute<T>
 
   Widget? _child;
 
+  /// Builds and caches the child widget with bindings applied.
+  ///
+  /// This method handles the dependency injection by running middleware
+  /// and applying bindings before building the page widget. The result is
+  /// cached to avoid rebuilding on every frame.
   Widget _getChild() {
     if (_child != null) return _child!;
 
@@ -151,11 +197,5 @@ class GetPageRoute<T> extends PageRoute<T>
   }
 
   @override
-  final String? title;
-
-  @override
   String get debugLabel => '${super.debugLabel}(${settings.name})';
-
-  @override
-  final double Function(BuildContext context)? gestureWidth;
 }

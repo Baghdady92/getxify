@@ -1,5 +1,3 @@
-// ignore_for_file: overridden_fields
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -24,12 +22,6 @@ extension ReadExt on BuildContext {
     return Bind.of(this);
   }
 }
-
-// extension FilterExt on BuildContext {
-//   T filter<T extends GetxController>(Object Function(T value)? filter) {
-//     return Bind.of(this, filter: filter, rebuild: true);
-//   }
-// }
 
 class GetBuilder<T extends GetxController> extends StatelessWidget {
   final GetControllerBuilder<T> builder;
@@ -84,7 +76,6 @@ class GetBuilder<T extends GetxController> extends StatelessWidget {
         },
       ),
     );
-    // return widget.builder(controller!);
   }
 }
 
@@ -132,15 +123,11 @@ abstract class Bind<T> extends StatelessWidget {
     InstanceBuilderCallback<S> builder, {
     String? tag,
     bool? fenix,
-    // VoidCallback? onInit,
     VoidCallback? onClose,
   }) {
     Get.lazyPut<S>(builder, tag: tag, fenix: fenix ?? fenixMode);
     return _FactoryBind<S>(
       tag: tag,
-      // initState: (_) {
-      //   onInit?.call();
-      // },
       dispose: (_) {
         onClose?.call();
       },
@@ -214,7 +201,6 @@ abstract class Bind<T> extends StatelessWidget {
     void Function(BindElement<T> state)? didChangeDependencies,
     void Function(Binder<T> oldWidget, BindElement<T> state)? didUpdateWidget,
   }) => _FactoryBind<T>(
-    // key: key,
     init: init,
     create: create,
     global: global,
@@ -230,11 +216,7 @@ abstract class Bind<T> extends StatelessWidget {
     child: child,
   );
 
-  static T of<T>(
-    BuildContext context, {
-    bool rebuild = false,
-    // Object Function(T value)? filter,
-  }) {
+  static T of<T>(BuildContext context, {bool rebuild = false}) {
     final inheritedElement =
         context.getElementForInheritedWidgetOfExactType<Binder<T>>()
             as BindElement<T>?;
@@ -244,12 +226,7 @@ abstract class Bind<T> extends StatelessWidget {
     }
 
     if (rebuild) {
-      // var newFilter = filter?.call(inheritedElement.controller!);
-      // if (newFilter != null) {
-      //  context.dependOnInheritedElement(inheritedElement, aspect: newFilter);
-      // } else {
       context.dependOnInheritedElement(inheritedElement);
-      // }
     }
 
     final controller = inheritedElement.controller;
@@ -262,51 +239,24 @@ abstract class Bind<T> extends StatelessWidget {
 }
 
 class _FactoryBind<T> extends Bind<T> {
-  @override
-  final InitBuilder<T>? init;
-
   final InstanceCreateBuilderCallback<T>? create;
-
-  @override
-  final bool global;
-  @override
-  final Object? id;
-  @override
-  final String? tag;
-  @override
-  final bool autoRemove;
-  @override
-  final bool assignId;
-  @override
-  final Object Function(T value)? filter;
-
-  @override
-  final void Function(BindElement<T> state)? initState,
-      dispose,
-      didChangeDependencies;
-  @override
-  final void Function(Binder<T> oldWidget, BindElement<T> state)?
-  didUpdateWidget;
-
-  @override
-  final Widget? child;
 
   const _FactoryBind({
     super.key,
-    this.child,
-    this.init,
+    super.child,
+    super.init,
     this.create,
-    this.global = true,
-    this.autoRemove = true,
-    this.assignId = false,
-    this.initState,
-    this.filter,
-    this.tag,
-    this.dispose,
-    this.id,
-    this.didChangeDependencies,
-    this.didUpdateWidget,
-  }) : super(child: child);
+    super.global = true,
+    super.autoRemove = true,
+    super.assignId = false,
+    super.initState,
+    super.filter,
+    super.tag,
+    super.dispose,
+    super.id,
+    super.didChangeDependencies,
+    super.didUpdateWidget,
+  });
 
   @override
   Bind<T> _copyWithChild(Widget child) {
@@ -578,11 +528,7 @@ class BindElement<T> extends InheritedElement {
     if (_dirty) {
       notifyClients(widget);
     }
-    // return Notifier.instance.notifyAppend(
-    //   NotifyData(
-    //       disposers: disposers, updater: getUpdate, throwException: false),
     return super.build();
-    //);
   }
 
   void getUpdate() {
