@@ -206,7 +206,7 @@ extension AnimationExtension on Widget {
 
   Duration _getDelay(bool isSequential, Duration delay) {
     assert(!(isSequential && delay != Duration.zero),
-        "Error: When isSequential is true, delay must be non-zero. Context: isSequential: $isSequential delay: $delay");
+        "Error: When isSequential is true, delay must be zero. Context: isSequential: $isSequential delay: $delay");
 
     return isSequential
         ? (_currentAnimation?.totalDuration ?? Duration.zero)

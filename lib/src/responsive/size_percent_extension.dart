@@ -4,6 +4,6 @@ import '../../getxify.dart';
 extension PercentSized on double {
   // height: 50.0.hp = 50%
   double get hp => (Get.height * (this / 100));
-  // width: 30.0.hp = 30%
+  // width: 30.0.wp = 30%
   double get wp => (Get.width * (this / 100));
 }

@@ -307,7 +307,7 @@ extension StateExt<T> on StateMixin<T> {
         } else if (status.isError) {
           return onError != null
               ? onError(status.errorMessage)
-              : Center(child: Text('A error occurred: ${status.errorMessage}'));
+              : Center(child: Text('An error occurred: ${status.errorMessage}'));
         } else if (status.isEmpty) {
           return onEmpty ??
               const SizedBox.shrink(); // Also can be widget(null); but is risky
