@@ -7,9 +7,9 @@ import '../../../getxify.dart';
 import '../router_report.dart';
 
 /// The central configuration container used internally by GetXify.
-/// 
-/// [ConfigData] aggregates all properties required to bootstrap a 
-/// GetMaterialApp or GetCupertinoApp, bridging the gap between legacy 
+///
+/// [ConfigData] aggregates all properties required to bootstrap a
+/// GetMaterialApp or GetCupertinoApp, bridging the gap between legacy
 /// Flutter properties and GetXify's advanced routing, localization, and state systems.
 class ConfigData {
   final ValueChanged<Routing?>? routingCallback;
@@ -290,9 +290,9 @@ class ConfigData {
 }
 
 /// The underlying StatefulWidget serving as the structural anchor for all GetXify apps.
-/// 
-/// [GetRoot] intercepts configuration from `GetMaterialApp` and `GetCupertinoApp`, 
-/// processes the [ConfigData], initializes localization, translations, routing, and 
+///
+/// [GetRoot] intercepts configuration from `GetMaterialApp` and `GetCupertinoApp`,
+/// processes the [ConfigData], initializes localization, translations, routing, and
 /// theme systems before injecting them into the standard Flutter application widget.
 class GetRoot extends StatefulWidget {
   const GetRoot({super.key, required this.config, required this.child});
@@ -513,10 +513,14 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     });
   }
 
-  late final GlobalKey<NavigatorState> _fallbackKey = GlobalKey<NavigatorState>();
+  late final GlobalKey<NavigatorState> _fallbackKey =
+      GlobalKey<NavigatorState>();
 
   GlobalKey<NavigatorState> get key {
     if (config.routerConfig != null) {
+      return config.navigatorKey ?? _fallbackKey;
+    }
+    if (config.routerDelegate == null) {
       return config.navigatorKey ?? _fallbackKey;
     }
     return config.navigatorKey ?? rootDelegate.navigatorKey;
@@ -528,7 +532,7 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
       config.routeInformationParser!;
 
   GlobalKey<NavigatorState>? addKey(GlobalKey<NavigatorState> newKey) {
-    if (config.routerConfig == null) {
+    if (config.routerConfig == null && config.routerDelegate != null) {
       rootDelegate.navigatorKey = newKey;
     }
     return key;
@@ -539,6 +543,7 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
   GetDelegate? nestedKey(String? key) {
     if (key == null) {
       if (config.routerConfig != null) return null;
+      if (config.routerDelegate == null) return null;
       return rootDelegate;
     }
     keys.putIfAbsent(

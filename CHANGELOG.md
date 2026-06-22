@@ -1,3 +1,70 @@
+## 2.0.0
+
+### Breaking Changes
+
+- **Removed GetUtils class** - The `GetUtils` class with 722 lines of validation and string manipulation methods has been removed. This includes:
+  - Validation methods: `isEmail`, `isURL`, `isPhoneNumber`, `isDateTime`, `isMD5`, `isSHA1`, `isSHA256`, `isSSN`, `isBinary`, `isIPv4`, `isIPv6`, `isHexadecimal`, `isPalindrome`, `isUsername`, `isCurrency`, `isPassport`, Brazilian `isCpf`/`isCnpj`
+  - File type checks: `isVideo`, `isImage`, `isAudio`, `isPPT`, `isWord`, `isExcel`, `isAPK`, `isPDF`, `isTxt`, `isChm`, `isVector`, `isHTML`
+  - String manipulation: `capitalize`, `capitalizeFirst`, `removeAllWhitespace`, `camelCase`, `snakeCase`, `paramCase`, `numericOnly`, `capitalizeAllWordsFirstLetter`
+  - Length validation methods
+  - Basic type checks: `isNull`, `isNullOrBlank`, `isBlank`, `isNum`, `isNumericOnly`, `isAlphabetOnly`, `hasCapitalLetter`, `isBool`
+
+- **Removed string extensions** - All string extensions that wrapped GetUtils methods have been removed:
+  - `isNum`, `isNumericOnly`, `isAlphabetOnly`, `isBool`
+  - `isVectorFileName`, `isImageFileName`, `isAudioFileName`, `isVideoFileName`, `isTxtFileName`, `isDocumentFileName`, `isExcelFileName`, `isPPTFileName`, `isAPKFileName`, `isPDFFileName`, `isHTMLFileName`
+  - `isURL`, `isEmail`, `isPhoneNumber`, `isDateTime`
+  - `capitalize`, `capitalizeFirst`, `removeAllWhitespace`, `camelCase`, `paramCase`, `numericOnly`, `capitalizeAllWordsFirstLetter`
+
+- **Removed unused extensions** - The following extension modules have been removed:
+  - `double_extensions.dart`
+  - `duration_extensions.dart`
+  - `dynamic_extensions.dart`
+  - `int_extensions.dart`
+  - `num_extensions.dart`
+  - `widget_extensions.dart`
+
+- **Removed GetMicrotask class** - The `GetMicrotask` class has been removed as it was not used anywhere in the codebase.
+
+- **Removed OptimizedListView widget** - The `OptimizedListView` widget has been removed as it was not used anywhere in the codebase.
+
+### Migration Guide
+
+If you were using any of the removed utilities, you should migrate to dedicated packages:
+
+- **Validation**: Use the [`validator`](https://pub.dev/packages/validator) package or similar
+- **String manipulation**: Use the [`recase`](https://pub.dev/packages/recase) package for case conversion
+- **File operations**: Use the [`path`](https://pub.dev/packages/path) package
+- **Equality**: Use the [`equatable`](https://pub.dev/packages/equatable) package if you need value-based equality in your own code
+
+### Bug Fixes
+
+- **Fixed controller disposal during rapid navigation** - Controllers are now properly disposed when quickly navigating back and forth using keyboard shortcuts or programmatic navigation. Added `reportRouteWillDispose` call in the `didPop` method of `GetObserver` to ensure dependencies are cleaned up correctly.
+- **Fixed secondary animation issue** - Outgoing pages now animate correctly when using `Navigator.push` with `GetMaterialApp` or `GetCupertinoApp`. The apps now use regular `MaterialApp`/`CupertinoApp` when `getPages` is null and no router config is provided, allowing proper secondary animations for imperative navigation.
+- **Fixed null routerDelegate handling** - `GetRoot` now properly handles cases where `routerDelegate` is null, preventing runtime errors when accessing navigation keys in non-router scenarios.
+
+### Improvements
+
+- **Reduced bundle size** - Removed ~1000+ lines of unnecessary utility code
+- **Focused scope** - GetXify now focuses on its core purpose: state management, navigation, and dependency injection
+- **Better separation of concerns** - General-purpose utilities should use dedicated packages, not a framework
+
+### Kept Functionality
+
+The following essential utilities remain:
+
+- `Equality` mixin - Needed by `StateMixin` for value-based equality comparison
+- `GetPlatform` - Platform detection (used in 3 places in core framework)
+- `GetQueue` - Queue management (used by snackbar system)
+- `IterableExtensions` - `mapMany`, `firstWhereOrNull` (used by router)
+- `ContextExtensions` - `theme`, `mediaQuery`, `height`, `width` (used by responsive design and navigation)
+- `InternationalizationExtensions` - `.tr` extension for translations
+- `EventLoopExtensions` - `asap`, `toEnd` methods (used by core framework)
+- `printInfo` method - Added to `GetInterface` for logging
+
+### Testing
+
+- All 144 tests passing
+
 ## 1.0.2
 
 ### Code Quality Improvements

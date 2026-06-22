@@ -8,14 +8,14 @@ import '../../get_navigation.dart';
 import 'get_root.dart';
 
 /// A fully customized [MaterialApp] designed to be the entry point for GetXify applications.
-/// 
+///
 /// It extends [MaterialApp] capabilities by seamlessly integrating:
 /// * **Routing:** Built-in declarative routing via [getPages] or standard [routes].
 /// * **State Management:** Dependency injection configuration using [binds].
 /// * **Theming:** Dynamic theme swapping and transition management.
 /// * **Localization:** Simple language setup with [translations] and [locale].
 ///
-/// Use [GetMaterialApp.router] to construct an app using the Router API, 
+/// Use [GetMaterialApp.router] to construct an app using the Router API,
 /// supplying a [routerConfig] or custom [routerDelegate].
 class GetMaterialApp extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
@@ -79,7 +79,7 @@ class GetMaterialApp extends StatelessWidget {
 
   /// Creates a [GetMaterialApp] instance for a standard GetX application.
   ///
-  /// You can use [home] to set the main entry widget, or provide a list of [getPages] 
+  /// You can use [home] to set the main entry widget, or provide a list of [getPages]
   /// with an [initialRoute] to utilize the GetX declarative routing system.
   const GetMaterialApp({
     super.key,
@@ -250,12 +250,64 @@ class GetMaterialApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           final controller = GetRoot.of(context);
+
+          // Use regular MaterialApp when getPages is null to support imperative navigation
+          // with proper secondary animations
+          if (controller.config.getPages == null &&
+              controller.config.routerConfig == null &&
+              controller.config.routerDelegate == null) {
+            return MaterialApp(
+              key: controller.config.unikey,
+              navigatorKey: controller.config.navigatorKey,
+              scaffoldMessengerKey: controller.config.scaffoldMessengerKey,
+              home: controller.config.home,
+              routes: routes ?? const {},
+              initialRoute: initialRoute,
+              onGenerateRoute: onGenerateRoute,
+              onGenerateInitialRoutes: onGenerateInitialRoutes,
+              onUnknownRoute: onUnknownRoute,
+              builder: (context, child) => Directionality(
+                textDirection:
+                    textDirection ??
+                    (rtlLanguages.contains(Get.locale?.languageCode)
+                        ? TextDirection.rtl
+                        : TextDirection.ltr),
+                child: builder == null
+                    ? (child ?? const Material())
+                    : builder!(context, child ?? const Material()),
+              ),
+              title: title,
+              onGenerateTitle: onGenerateTitle,
+              color: color,
+              theme: controller.config.theme ?? ThemeData.fallback(),
+              darkTheme:
+                  controller.config.darkTheme ??
+                  controller.config.theme ??
+                  ThemeData.fallback(),
+              themeMode: controller.config.themeMode,
+              locale: Get.locale ?? locale,
+              localizationsDelegates: localizationsDelegates,
+              localeListResolutionCallback: localeListResolutionCallback,
+              localeResolutionCallback: localeResolutionCallback,
+              supportedLocales: supportedLocales,
+              debugShowMaterialGrid: debugShowMaterialGrid,
+              showPerformanceOverlay: showPerformanceOverlay,
+              checkerboardRasterCacheImages: checkerboardRasterCacheImages,
+              checkerboardOffscreenLayers: checkerboardOffscreenLayers,
+              showSemanticsDebugger: showSemanticsDebugger,
+              debugShowCheckedModeBanner: debugShowCheckedModeBanner,
+              shortcuts: shortcuts,
+              scrollBehavior: scrollBehavior,
+            );
+          }
+
           return controller.config.routerConfig != null
               ? MaterialApp.router(
                   routerConfig: controller.config.routerConfig,
                   key: controller.config.unikey,
                   builder: (context, child) => Directionality(
-                    textDirection: textDirection ??
+                    textDirection:
+                        textDirection ??
                         (rtlLanguages.contains(Get.locale?.languageCode)
                             ? TextDirection.rtl
                             : TextDirection.ltr),
@@ -267,7 +319,8 @@ class GetMaterialApp extends StatelessWidget {
                   onGenerateTitle: onGenerateTitle,
                   color: color,
                   theme: controller.config.theme ?? ThemeData.fallback(),
-                  darkTheme: controller.config.darkTheme ??
+                  darkTheme:
+                      controller.config.darkTheme ??
                       controller.config.theme ??
                       ThemeData.fallback(),
                   themeMode: controller.config.themeMode,
@@ -294,7 +347,8 @@ class GetMaterialApp extends StatelessWidget {
                   routeInformationProvider: routeInformationProvider,
                   key: controller.config.unikey,
                   builder: (context, child) => Directionality(
-                    textDirection: textDirection ??
+                    textDirection:
+                        textDirection ??
                         (rtlLanguages.contains(Get.locale?.languageCode)
                             ? TextDirection.rtl
                             : TextDirection.ltr),
@@ -306,7 +360,8 @@ class GetMaterialApp extends StatelessWidget {
                   onGenerateTitle: onGenerateTitle,
                   color: color,
                   theme: controller.config.theme ?? ThemeData.fallback(),
-                  darkTheme: controller.config.darkTheme ??
+                  darkTheme:
+                      controller.config.darkTheme ??
                       controller.config.theme ??
                       ThemeData.fallback(),
                   themeMode: controller.config.themeMode,

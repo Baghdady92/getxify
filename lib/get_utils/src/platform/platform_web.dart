@@ -1,7 +1,5 @@
 import 'package:web/web.dart' as html;
 
-import '../../get_utils.dart';
-
 html.Navigator _navigator = html.window.navigator;
 
 // ignore: avoid_classes_with_only_static_members
@@ -23,7 +21,7 @@ class GeneralPlatform {
 
   static bool get isIOS {
     // maxTouchPoints is needed to separate iPad iOS13 vs new MacOS
-    return GetUtils.hasMatch(_navigator.platform, r'/iPad|iPhone|iPod/') ||
+    return RegExp(r'/iPad|iPhone|iPod/').hasMatch(_navigator.platform) ||
         (_navigator.platform == 'MacIntel' && _navigator.maxTouchPoints > 1);
   }
 
