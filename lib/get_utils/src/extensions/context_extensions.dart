@@ -134,8 +134,8 @@ extension ContextExt on BuildContext {
   /// True if the width is higher than 1200p
   bool get isDesktopOrWider => width >= 1200;
 
-  /// same as [isDesktopOrLess]
-  bool get isDesktop => isDesktopOrLess;
+  /// same as [isDesktopOrWider]
+  bool get isDesktop => isDesktopOrWider;
 
   /// Returns a specific value according to the screen size
   /// if the device width is higher than or equal to 1200 return

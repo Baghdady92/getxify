@@ -371,9 +371,18 @@ extension Inst on GetInterface {
 
     if (dep == null) return false;
 
-    final _InstanceBuilderFactory<Object?> builder = dep.lateRemove ?? dep;
+    void cleanFactory(_InstanceBuilderFactory<Object?> factory) {
+      if (factory.lateRemove != null) {
+        cleanFactory(factory.lateRemove!);
+      }
+      final i = factory.dependency;
+      if (i is GetLifeCycleMixin) {
+        i.onDelete();
+        Get.log('"$newKey" onDelete() called');
+      }
+    }
 
-    if (builder.permanent && !force) {
+    if (dep.permanent && !force) {
       Get.log(
         // ignore: lines_longer_than_80_chars
         '"$newKey" has been marked as permanent, SmartManagement is not authorized to delete it.',
@@ -381,35 +390,27 @@ extension Inst on GetInterface {
       );
       return false;
     }
-    final i = builder.dependency;
+    final primaryDependency = dep.dependency;
 
-    if (i is GetxServiceMixin && !force) {
+    if (primaryDependency is GetxServiceMixin && !force) {
       return false;
     }
 
-    if (i is GetLifeCycleMixin) {
-      i.onDelete();
-      Get.log('"$newKey" onDelete() called');
-    }
+    cleanFactory(dep);
 
-    if (builder.fenix) {
-      builder.dependency = null;
-      builder.isInit = false;
+    if (dep.fenix) {
+      dep.dependency = null;
+      dep.isInit = false;
+      dep.lateRemove = null;
       return true;
     } else {
-      if (dep.lateRemove != null) {
-        dep.lateRemove = null;
-        Get.log('"$newKey" deleted from memory');
-        return false;
+      _singl.remove(newKey);
+      if (_singl.containsKey(newKey)) {
+        Get.log('Error removing object "$newKey"', isError: true);
       } else {
-        _singl.remove(newKey);
-        if (_singl.containsKey(newKey)) {
-          Get.log('Error removing object "$newKey"', isError: true);
-        } else {
-          Get.log('"$newKey" deleted from memory');
-        }
-        return true;
+        Get.log('"$newKey" deleted from memory');
       }
+      return true;
     }
   }
 
