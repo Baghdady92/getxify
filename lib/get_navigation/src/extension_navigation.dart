@@ -805,11 +805,11 @@ extension GetNavigationExt on GetInterface {
 
   /// Returns true if a Snackbar, Dialog or BottomSheet is currently OPEN
   bool get isOverlaysOpen =>
-      (isSnackbarOpen || isDialogOpen! || isBottomSheetOpen!);
+      (isSnackbarOpen || (isDialogOpen ?? false) || (isBottomSheetOpen ?? false));
 
   /// Returns true if there is no Snackbar, Dialog or BottomSheet open
   bool get isOverlaysClosed =>
-      (!isSnackbarOpen && !isDialogOpen! && !isBottomSheetOpen!);
+      (!isSnackbarOpen && !(isDialogOpen ?? false) && !(isBottomSheetOpen ?? false));
 
   /// **Navigation.popUntil()** shortcut.<br><br>
   ///
@@ -875,13 +875,13 @@ extension GetNavigationExt on GetInterface {
 
   void closeAllDialogsAndBottomSheets(String? id) {
     // It can not be divided, because dialogs and bottomsheets can not be consecutive
-    while ((isDialogOpen! && isBottomSheetOpen!)) {
+    while (((isDialogOpen ?? false) && (isBottomSheetOpen ?? false))) {
       closeOverlay(id: id);
     }
   }
 
   void closeAllDialogs({String? id}) {
-    while ((isDialogOpen!)) {
+    while ((isDialogOpen ?? false)) {
       closeOverlay(id: id);
     }
   }
@@ -889,14 +889,14 @@ extension GetNavigationExt on GetInterface {
   /// Close the currently open dialog, returning a [result], if provided
   void closeDialog<T>({String? id, T? result}) {
     // Stop if there is no dialog open
-    if (isDialogOpen == null || !isDialogOpen!) return;
+    if (!(isDialogOpen ?? false)) return;
 
     closeOverlay(id: id, result: result);
   }
 
   void closeBottomSheet<T>({String? id, T? result}) {
     // Stop if there is no bottomsheet open
-    if (isBottomSheetOpen == null || !isBottomSheetOpen!) return;
+    if (!(isBottomSheetOpen ?? false)) return;
 
     closeOverlay(id: id, result: result);
   }
@@ -907,7 +907,7 @@ extension GetNavigationExt on GetInterface {
   }
 
   void closeAllBottomSheets({String? id}) {
-    while ((isBottomSheetOpen!)) {
+    while ((isBottomSheetOpen ?? false)) {
       searchDelegate(id).navigatorKey.currentState?.pop();
     }
   }
