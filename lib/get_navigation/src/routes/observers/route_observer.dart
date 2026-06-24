@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../../get_core/get_core.dart';
-import '../../../../instance_manager.dart';
 import '../../../get_navigation.dart';
 import '../../dialog/dialog_route.dart';
 import '../../router_report.dart';

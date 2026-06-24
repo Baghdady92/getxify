@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import '../../../instance_manager.dart';
+import '../../../get_core/get_core.dart';
+import '../../../get_instance/get_instance.dart';
 import '../rx_flutter/rx_notifier.dart';
 import 'list_notifier.dart';
 

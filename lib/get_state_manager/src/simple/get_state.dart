@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../instance_manager.dart';
+import '../../../get_core/get_core.dart';
+import '../../../get_instance/get_instance.dart';
 import '../../get_state_manager.dart';
 import 'list_notifier.dart';
 

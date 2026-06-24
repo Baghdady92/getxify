@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../get_instance/get_instance.dart';
 import '../../../get_rx/src/rx_types/rx_types.dart';
 import '../../../get_utils/src/equality/equality.dart';
-import '../../../instance_manager.dart';
 import '../../get_state_manager.dart';
 import '../simple/list_notifier.dart';
 
@@ -307,7 +307,9 @@ extension StateExt<T> on StateMixin<T> {
         } else if (status.isError) {
           return onError != null
               ? onError(status.errorMessage)
-              : Center(child: Text('An error occurred: ${status.errorMessage}'));
+              : Center(
+                  child: Text('An error occurred: ${status.errorMessage}'),
+                );
         } else if (status.isEmpty) {
           return onEmpty ??
               const SizedBox.shrink(); // Also can be widget(null); but is risky
