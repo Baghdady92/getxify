@@ -2,19 +2,41 @@ import 'package:flutter/material.dart';
 
 import 'animations.dart';
 
+/// A widget that animates a [tween] value over a [duration] after a specified [delay].
+///
+/// Implements animation lifecycle hooks such as [onStart] and [onComplete].
 class GetAnimatedBuilder<T> extends StatefulWidget {
+  /// The duration of the animation transition itself.
   final Duration duration;
+
+  /// The delay duration before the animation starts playing.
   final Duration delay;
+
+  /// The child widget to be animated.
   final Widget child;
+
+  /// A callback triggered when the animation completes.
   final ValueSetter<AnimationController>? onComplete;
+
+  /// A callback triggered when the animation starts playing.
   final ValueSetter<AnimationController>? onStart;
+
+  /// The tween defining the start and end values for the animation.
   final Tween<T> tween;
+
+  /// The idle or initial value of the animation before it starts playing.
   final T idleValue;
+
+  /// The builder function that builds a widget with the current animated value.
   final ValueWidgetBuilder<T> builder;
+
+  /// The animation curve to apply to the transition.
   final Curve curve;
 
+  /// Returns the total duration including both the animation duration and the delay.
   Duration get totalDuration => duration + delay;
 
+  /// Creates a [GetAnimatedBuilder] with the given parameters.
   const GetAnimatedBuilder({
     super.key,
     this.curve = Curves.linear,
@@ -27,25 +49,24 @@ class GetAnimatedBuilder<T> extends StatefulWidget {
     required this.child,
     required this.delay,
   });
+
   @override
   GetAnimatedBuilderState<T> createState() => GetAnimatedBuilderState<T>();
 }
 
+/// The state for [GetAnimatedBuilder] managing the animation lifecycle.
 class GetAnimatedBuilderState<T> extends State<GetAnimatedBuilder<T>>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<T> _animation;
 
-  // AnimationController get controller => _controller;
-  // Animation<T> get animation => _animation;
-
   bool _wasStarted = false;
-  // bool get wasStarted => _wasStarted;
 
   late T _idleValue;
 
   bool _willResetOnDispose = false;
 
+  /// Whether the controller will be reset when this state is disposed.
   bool get willResetOnDispose => _willResetOnDispose;
 
   void _listener(AnimationStatus status) {

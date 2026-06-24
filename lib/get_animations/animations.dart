@@ -5,9 +5,12 @@ import 'package:flutter/widgets.dart';
 
 import 'get_animated_builder.dart';
 
+/// Signature for a builder function that determines the slide [Offset] based on value.
 typedef OffsetBuilder = Offset Function(BuildContext, double);
 
+/// Animation that fades in a widget by transitioning its opacity from 0.0 to 1.0.
 class FadeInAnimation extends OpacityAnimation {
+  /// Creates a [FadeInAnimation] with specified durations, delays, and callbacks.
   FadeInAnimation({
     super.key,
     required super.duration,
@@ -20,7 +23,9 @@ class FadeInAnimation extends OpacityAnimation {
   });
 }
 
+/// Animation that fades out a widget by transitioning its opacity from 1.0 to 0.0.
 class FadeOutAnimation extends OpacityAnimation {
+  /// Creates a [FadeOutAnimation] with specified durations, delays, and callbacks.
   FadeOutAnimation({
     super.key,
     required super.duration,
@@ -33,7 +38,9 @@ class FadeOutAnimation extends OpacityAnimation {
   });
 }
 
+/// Base class for opacity-based animations.
 class OpacityAnimation extends GetAnimatedBuilder<double> {
+  /// Creates an [OpacityAnimation] transitioning between [begin] and [end] opacity values.
   OpacityAnimation({
     super.key,
     required super.duration,
@@ -46,12 +53,14 @@ class OpacityAnimation extends GetAnimatedBuilder<double> {
   }) : super(
          tween: Tween<double>(begin: begin, end: end),
          builder: (context, value, child) {
-           return Opacity(opacity: value, child: child!);
+            return Opacity(opacity: value, child: child!);
          },
        );
 }
 
+/// Animation that rotates a widget from [begin] to [end] angle in radians.
 class RotateAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [RotateAnimation] rotating the child widget.
   RotateAnimation({
     super.key,
     required super.duration,
@@ -68,7 +77,9 @@ class RotateAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that scales a widget from [begin] to [end] scale factor.
 class ScaleAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [ScaleAnimation] scaling the child widget.
   ScaleAnimation({
     super.key,
     required super.duration,
@@ -85,7 +96,9 @@ class ScaleAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that applies a bouncing scale effect to a widget.
 class BounceAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [BounceAnimation] scaling the child widget with a bounce curve.
   BounceAnimation({
     super.key,
     required super.duration,
@@ -103,7 +116,9 @@ class BounceAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that spins a widget 360 degrees.
 class SpinAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [SpinAnimation] spinning the child widget.
   SpinAnimation({
     super.key,
     required super.duration,
@@ -118,7 +133,9 @@ class SpinAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that transitions a widget's size/scale from [begin] to [end].
 class SizeAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [SizeAnimation] sizing/scaling the child widget.
   SizeAnimation({
     super.key,
     required super.duration,
@@ -135,7 +152,9 @@ class SizeAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that applies a backdrop blur filter from [begin] to [end] sigma.
 class BlurAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [BlurAnimation] blurring the child widget.
   BlurAnimation({
     super.key,
     required super.duration,
@@ -154,7 +173,9 @@ class BlurAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that flips a widget around its Y-axis from [begin] to [end] phase.
 class FlipAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [FlipAnimation] flipping the child widget Y-axis.
   FlipAnimation({
     super.key,
     required super.duration,
@@ -177,7 +198,9 @@ class FlipAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that moves a widget up and down in a wave motion on the Y-axis.
 class WaveAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [WaveAnimation] waving the child widget.
   WaveAnimation({
     super.key,
     required super.duration,
@@ -200,7 +223,9 @@ class WaveAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that wobbles a widget with a perspective rotation Z.
 class WobbleAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [WobbleAnimation] wobbling the child widget.
   WobbleAnimation({
     super.key,
     required super.duration,
@@ -222,7 +247,9 @@ class WobbleAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Slide animation that enters the child widget from the left of the screen.
 class SlideInLeftAnimation extends SlideAnimation {
+  /// Creates a [SlideInLeftAnimation] sliding from the left.
   SlideInLeftAnimation({
     super.key,
     required super.duration,
@@ -238,7 +265,9 @@ class SlideInLeftAnimation extends SlideAnimation {
        );
 }
 
+/// Slide animation that enters the child widget from the right of the screen.
 class SlideInRightAnimation extends SlideAnimation {
+  /// Creates a [SlideInRightAnimation] sliding from the right.
   SlideInRightAnimation({
     super.key,
     required super.duration,
@@ -254,7 +283,9 @@ class SlideInRightAnimation extends SlideAnimation {
        );
 }
 
+/// Slide animation that enters the child widget from the bottom upward.
 class SlideInUpAnimation extends SlideAnimation {
+  /// Creates a [SlideInUpAnimation] sliding upward.
   SlideInUpAnimation({
     super.key,
     required super.duration,
@@ -270,7 +301,9 @@ class SlideInUpAnimation extends SlideAnimation {
        );
 }
 
+/// Slide animation that enters the child widget from the top downward.
 class SlideInDownAnimation extends SlideAnimation {
+  /// Creates a [SlideInDownAnimation] sliding downward.
   SlideInDownAnimation({
     super.key,
     required super.duration,
@@ -286,7 +319,9 @@ class SlideInDownAnimation extends SlideAnimation {
        );
 }
 
+/// Base slide animation class that shifts a widget position using [OffsetBuilder].
 class SlideAnimation extends GetAnimatedBuilder<double> {
+  /// Creates a [SlideAnimation] translating the child widget.
   SlideAnimation({
     super.key,
     required super.duration,
@@ -306,7 +341,9 @@ class SlideAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
+/// Animation that transitions the color filter of a widget between two colors.
 class ColorAnimation extends GetAnimatedBuilder<Color?> {
+  /// Creates a [ColorAnimation] applying color transitions to the child widget.
   ColorAnimation({
     super.key,
     required super.duration,
