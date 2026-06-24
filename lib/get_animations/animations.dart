@@ -44,14 +44,11 @@ class OpacityAnimation extends GetAnimatedBuilder<double> {
     required double end,
     required super.idleValue,
   }) : super(
-          tween: Tween<double>(begin: begin, end: end),
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: child!,
-            );
-          },
-        );
+         tween: Tween<double>(begin: begin, end: end),
+         builder: (context, value, child) {
+           return Opacity(opacity: value, child: child!);
+         },
+       );
 }
 
 class RotateAnimation extends GetAnimatedBuilder<double> {
@@ -65,12 +62,10 @@ class RotateAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform.rotate(
-            angle: value,
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) =>
+             Transform.rotate(angle: value, child: child),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class ScaleAnimation extends GetAnimatedBuilder<double> {
@@ -84,32 +79,11 @@ class ScaleAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform.scale(
-            scale: value,
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) =>
+             Transform.scale(scale: value, child: child),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
-
-// class SlideAnimation extends GetAnimatedBuilder<Offset> {
-//   SlideAnimation({
-//     super.key,
-//     required super.duration,
-//     required super.delay,
-//     required super.child,
-//     super.onComplete,
-//     required Offset begin,
-//     required Offset end,
-//     super.idleValue = const Offset(0, 0),
-//   }) : super(
-//           builder: (context, value, child) => Transform.translate(
-//             offset: value,
-//             child: child,
-//           ),
-//           tween: Tween(begin: begin, end: end),
-//         );
-// }
 
 class BounceAnimation extends GetAnimatedBuilder<double> {
   BounceAnimation({
@@ -123,12 +97,10 @@ class BounceAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform.scale(
-            scale: 1 + value.abs(),
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) =>
+             Transform.scale(scale: 1 + value.abs(), child: child),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class SpinAnimation extends GetAnimatedBuilder<double> {
@@ -140,12 +112,10 @@ class SpinAnimation extends GetAnimatedBuilder<double> {
     super.onComplete,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform.rotate(
-            angle: value * pi / 180.0,
-            child: child,
-          ),
-          tween: Tween<double>(begin: 0, end: 360),
-        );
+         builder: (context, value, child) =>
+             Transform.rotate(angle: value * pi / 180.0, child: child),
+         tween: Tween<double>(begin: 0, end: 360),
+       );
 }
 
 class SizeAnimation extends GetAnimatedBuilder<double> {
@@ -159,12 +129,10 @@ class SizeAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
   }) : super(
-          builder: (context, value, child) => Transform.scale(
-            scale: value,
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) =>
+             Transform.scale(scale: value, child: child),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class BlurAnimation extends GetAnimatedBuilder<double> {
@@ -178,15 +146,12 @@ class BlurAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: value,
-              sigmaY: value,
-            ),
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) => BackdropFilter(
+           filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
+           child: child,
+         ),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class FlipAnimation extends GetAnimatedBuilder<double> {
@@ -200,16 +165,16 @@ class FlipAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) {
-            final radians = value * pi;
-            return Transform(
-              transform: Matrix4.rotationY(radians),
-              alignment: Alignment.center,
-              child: child,
-            );
-          },
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) {
+           final radians = value * pi;
+           return Transform(
+             transform: Matrix4.rotationY(radians),
+             alignment: Alignment.center,
+             child: child,
+           );
+         },
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class WaveAnimation extends GetAnimatedBuilder<double> {
@@ -223,16 +188,16 @@ class WaveAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform(
-            transform: Matrix4.translationValues(
-              0.0,
-              20.0 * sin(value * pi * 2),
-              0.0,
-            ),
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) => Transform(
+           transform: Matrix4.translationValues(
+             0.0,
+             20.0 * sin(value * pi * 2),
+             0.0,
+           ),
+           child: child,
+         ),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class WobbleAnimation extends GetAnimatedBuilder<double> {
@@ -246,15 +211,15 @@ class WobbleAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform(
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateZ(sin(value * pi * 2) * 0.1),
-            alignment: Alignment.center,
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) => Transform(
+           transform: Matrix4.identity()
+             ..setEntry(3, 2, 0.001)
+             ..rotateZ(sin(value * pi * 2) * 0.1),
+           alignment: Alignment.center,
+           child: child,
+         ),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
 
 class SlideInLeftAnimation extends SlideAnimation {
@@ -268,9 +233,9 @@ class SlideInLeftAnimation extends SlideAnimation {
     required super.end,
     super.idleValue = 0,
   }) : super(
-          offsetBuild: (context, value) =>
-              Offset(value * MediaQuery.of(context).size.width, 0),
-        );
+         offsetBuild: (context, value) =>
+             Offset(value * MediaQuery.of(context).size.width, 0),
+       );
 }
 
 class SlideInRightAnimation extends SlideAnimation {
@@ -284,9 +249,9 @@ class SlideInRightAnimation extends SlideAnimation {
     required super.end,
     super.idleValue = 0,
   }) : super(
-          offsetBuild: (context, value) =>
-              Offset((1 - value) * MediaQuery.of(context).size.width, 0),
-        );
+         offsetBuild: (context, value) =>
+             Offset((1 - value) * MediaQuery.of(context).size.width, 0),
+       );
 }
 
 class SlideInUpAnimation extends SlideAnimation {
@@ -300,9 +265,9 @@ class SlideInUpAnimation extends SlideAnimation {
     required super.end,
     super.idleValue = 0,
   }) : super(
-          offsetBuild: (context, value) =>
-              Offset(0, value * MediaQuery.of(context).size.height),
-        );
+         offsetBuild: (context, value) =>
+             Offset(0, value * MediaQuery.of(context).size.height),
+       );
 }
 
 class SlideInDownAnimation extends SlideAnimation {
@@ -316,9 +281,9 @@ class SlideInDownAnimation extends SlideAnimation {
     required super.end,
     super.idleValue = 0,
   }) : super(
-          offsetBuild: (context, value) =>
-              Offset(0, (1 - value) * MediaQuery.of(context).size.height),
-        );
+         offsetBuild: (context, value) =>
+             Offset(0, (1 - value) * MediaQuery.of(context).size.height),
+       );
 }
 
 class SlideAnimation extends GetAnimatedBuilder<double> {
@@ -333,32 +298,13 @@ class SlideAnimation extends GetAnimatedBuilder<double> {
     super.onComplete,
     super.idleValue = 0,
   }) : super(
-          builder: (context, value, child) => Transform.translate(
-            offset: offsetBuild(context, value),
-            child: child,
-          ),
-          tween: Tween<double>(begin: begin, end: end),
-        );
+         builder: (context, value, child) => Transform.translate(
+           offset: offsetBuild(context, value),
+           child: child,
+         ),
+         tween: Tween<double>(begin: begin, end: end),
+       );
 }
-
-// class ZoomAnimation extends GetAnimatedBuilder<double> {
-//   ZoomAnimation({
-//     super.key,
-//     required super.duration,
-//     required super.delay,
-//     required super.child,
-//     super.onComplete,
-//     required double begin,
-//     required double end,
-//     super.idleValue = 0,
-//   }) : super(
-//           builder: (context, value, child) => Transform.scale(
-//             scale: lerpDouble(1, end, value)!,
-//             child: child,
-//           ),
-//           tween: Tween<double>(begin: begin, end: end),
-//         );
-// }
 
 class ColorAnimation extends GetAnimatedBuilder<Color?> {
   ColorAnimation({
@@ -371,14 +317,11 @@ class ColorAnimation extends GetAnimatedBuilder<Color?> {
     required Color end,
     Color? idleColor,
   }) : super(
-          builder: (context, value, child) => ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              value!,
-              BlendMode.srcIn,
-            ),
-            child: child,
-          ),
-          idleValue: idleColor ?? begin,
-          tween: ColorTween(begin: begin, end: end),
-        );
+         builder: (context, value, child) => ColorFiltered(
+           colorFilter: ColorFilter.mode(value!, BlendMode.srcIn),
+           child: child,
+         ),
+         idleValue: idleColor ?? begin,
+         tween: ColorTween(begin: begin, end: end),
+       );
 }
