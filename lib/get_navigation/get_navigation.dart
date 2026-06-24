@@ -1,5 +1,3 @@
-library;
-
 export 'src/bottomsheet/bottomsheet.dart';
 export 'src/extension_navigation.dart';
 export 'src/root/get_cupertino_app.dart';
