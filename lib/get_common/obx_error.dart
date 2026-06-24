@@ -1,5 +1,9 @@
-/// Error thrown when GetX or Obx is used improperly.
+/// Exception thrown when [Obx] or [GetX] widgets are used improperly.
+///
+/// This error commonly occurs if no observable variables (`Rx` types) are detected
+/// within the build scope of the reactive widget.
 class ObxError implements Exception {
+  /// Creates a constant instance of [ObxError].
   const ObxError();
 
   @override
