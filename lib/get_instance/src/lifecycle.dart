@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 
-import '../../getxify.dart';
+import '../../get_core/src/flutter_engine.dart';
 
-/// The [GetLifeCycle]
+/// Mixin that provides lifecycle methods for controllers.
+///
+/// This mixin provides methods like [onInit], [onReady], and [onClose]
+/// that are called at different stages of the controller's lifecycle.
 ///
 /// ```dart
-/// class SomeController with GetLifeCycle {
-///   SomeController() {
-///     configureLifeCycle();
+/// class SomeController with GetLifeCycleMixin {
+///   @override
+///   void onInit() {
+///     // Initialize resources
+///     super.onInit();
 ///   }
 /// }
 /// ```
@@ -42,11 +47,9 @@ mixin GetLifeCycleMixin {
   /// It uses an internal "callable" type, to avoid any @overrides in subclasses.
   /// This method should be internal and is required to define the
   /// lifetime cycle of the subclass.
-  // @protected
   @mustCallSuper
   @nonVirtual
   void onStart() {
-    // _checkIfAlreadyConfigured();
     if (_initialized) return;
     onInit();
     _initialized = true;
@@ -57,7 +60,7 @@ mixin GetLifeCycleMixin {
   /// Checks whether the controller has already been closed.
   bool get isClosed => _isClosed;
 
-  // Called when the controller is removed from memory.
+  /// Called when the controller is removed from memory.
   @mustCallSuper
   @nonVirtual
   void onDelete() {
@@ -65,14 +68,6 @@ mixin GetLifeCycleMixin {
     _isClosed = true;
     onClose();
   }
-
-  //   void _checkIfAlreadyConfigured() {
-  //     if (_initialized) {
-  //       throw """You can only call configureLifeCycle once.
-  // The proper place to insert it is in your class's constructor
-  // that inherits GetLifeCycle.""";
-  //     }
-  //   }
 }
 
 /// Allow track difference between GetxServices and GetxControllers

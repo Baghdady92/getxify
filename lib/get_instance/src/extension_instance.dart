@@ -1,26 +1,43 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../get_core/get_core.dart';
 import '../../get_navigation/src/router_report.dart';
 import 'lifecycle.dart';
 
+/// Exception thrown when a requested dependency has not been registered
+/// in the dependency manager.
 class InstanceNotFoundException implements Exception {
+  /// The error message associated with this exception.
   final String message;
+
+  /// Creates a new [InstanceNotFoundException] with the given [message].
   InstanceNotFoundException(this.message);
 
   @override
   String toString() => 'InstanceNotFoundException: $message';
 }
 
+/// Holds metadata about the registration and lifecycle state of an instance.
 class InstanceInfo {
+  /// Whether the instance is marked as permanent.
   final bool? isPermanent;
+
+  /// Whether the instance is registered as a singleton.
   final bool? isSingleton;
+
+  /// Whether the instance is created on demand rather than stored as a singleton.
   bool get isCreate => isSingleton != true;
+
+  /// Whether the dependency is registered in the dependency manager.
   final bool isRegistered;
+
+  /// Whether the dependency is prepared (registered via lazyPut but not yet initialized).
   final bool isPrepared;
+
+  /// Whether the dependency has been initialized.
   final bool? isInit;
+
+  /// Creates a new [InstanceInfo] containing registration details.
   const InstanceInfo({
     required this.isPermanent,
     required this.isSingleton,
@@ -35,6 +52,7 @@ class InstanceInfo {
   }
 }
 
+/// Extension on [GetInterface] to reset and clear registered instances.
 extension ResetInstance on GetInterface {
   /// Clears all registered instances (and/or tags).
   /// Even the persistent ones.
@@ -51,13 +69,26 @@ extension ResetInstance on GetInterface {
   }
 }
 
+/// Main extension on [GetInterface] providing dependency injection features.
 extension Inst on GetInterface {
+  /// A callable shortcut to find/retrieve a registered dependency.
+  ///
+  /// Example:
+  /// ```dart
+  /// final controller = Get<MyController>();
+  /// ```
   T call<T>() => find<T>();
 
   /// Holds references to every registered Instance when using
   /// `Get.put()`
   static final Map<String, _InstanceBuilderFactory<Object?>> _singl = {};
 
+  /// Injects a [dependency] into the dependency manager and immediately initializes it.
+  ///
+  /// Returns the registered dependency.
+  ///
+  /// - [tag] Optional tag to identify this specific instance.
+  /// - [permanent] If true, prevents the instance from being deleted by SmartManagement.
   S put<S>(S dependency, {String? tag, bool permanent = false}) {
     _insert(
       isSingleton: true,
@@ -106,7 +137,7 @@ extension Inst on GetInterface {
   }
 
   /// Creates a new Class Instance [S] from the builder callback[S].
-  /// Every time [find]<[S]>() is used, it calls the builder method to generate
+  /// Every time [find]<S>() is used, it calls the builder method to generate
   /// a new Instance [S].
   /// It also registers each `instance.onClose()` with the current
   /// Route `Get.reference` to keep the lifecycle active.
@@ -259,6 +290,10 @@ extension Inst on GetInterface {
     return i;
   }
 
+  /// Finds an existing registered instance of type [S], or creates and registers a new one
+  /// using [dep] if not already registered.
+  ///
+  /// - [tag] Optional tag to identify the instance.
   S putOrFind<S>(InstanceBuilderCallback<S> dep, {String? tag}) {
     final key = _getKey(S, tag);
 
@@ -274,10 +309,10 @@ extension Inst on GetInterface {
   }
 
   /// Finds the registered type <[S]> (or [tag])
-  /// In case of using Get.[create] to register a type <[S]> or [tag],
+  /// In case of using Get.create to register a type <[S]> or [tag],
   /// it will create an instance each time you call [find].
   /// If the registered type <[S]> (or [tag]) is a Controller,
-  /// it will initialize it's lifecycle.
+  /// it will initialize its lifecycle.
   S find<S>({String? tag}) {
     final key = _getKey(S, tag);
     if (isRegistered<S>(tag: tag)) {
@@ -292,9 +327,8 @@ extension Inst on GetInterface {
         }
       }
 
-      /// although dirty solution, the lifecycle starts inside
-      /// `initDependencies`, so we have to return the instance from there
-      /// to make it compatible with `Get.create()`.
+      /// The lifecycle starts inside `initDependencies`, so we return
+      /// the instance from there to make it compatible with `Get.create()`.
       final i = _initDependencies<S>(name: tag);
       if (i != null) return i;
       return dep.getDependency() as S;
@@ -306,8 +340,9 @@ extension Inst on GetInterface {
     }
   }
 
-  /// The findOrNull method will return the instance if it is registered;
-  /// otherwise, it will return null.
+  /// Finds and returns the registered instance of type [S] if it exists, otherwise returns `null`.
+  ///
+  /// - [tag] Optional tag to identify the instance.
   S? findOrNull<S>({String? tag}) {
     if (isRegistered<S>(tag: tag)) {
       return find<S>(tag: tag);
@@ -315,9 +350,12 @@ extension Inst on GetInterface {
     return null;
   }
 
-  /// Replace a parent instance of a class in dependency management
-  /// with a [child] instance
-  /// - [tag] optional, if you use a [tag] to register the Instance.
+  /// Replaces an existing registered instance of type [P] with a new [child] instance.
+  ///
+  /// If the existing instance is permanent, it will be forcefully deleted first before
+  /// the new child is registered.
+  ///
+  /// - [tag] Optional tag to identify the instance.
   void replace<P>(P child, {String? tag}) {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
@@ -325,13 +363,13 @@ extension Inst on GetInterface {
     put(child, tag: tag, permanent: permanent);
   }
 
-  /// Replaces a parent instance with a new Instance<P> lazily from the
-  /// `<P>builder()` callback.
-  /// - [tag] optional, if you use a [tag] to register the Instance.
-  /// - [fenix] optional
+  /// Replaces an existing registered dependency of type [P] with a new lazy factory [builder].
   ///
-  ///  Note: if fenix is not provided it will be set to true if
-  /// the parent instance was permanent
+  /// If the existing instance is permanent, it will be forcefully deleted first.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  /// - [fenix] If true, the builder callback will persist in memory to recreate the instance if deleted.
+  ///   If not provided, defaults to true if the parent instance was permanent.
   void lazyReplace<P>(
     InstanceBuilderCallback<P> builder, {
     String? tag,
@@ -414,10 +452,10 @@ extension Inst on GetInterface {
     }
   }
 
-  /// Delete all registered Class Instances and, closes any open
-  /// controllers `DisposableInterface`, cleans up the memory
+  /// Deletes all registered instances from memory, invokes their onDelete/close lifecycles,
+  /// and cleans up resources.
   ///
-  /// - [force] Will delete the Instances even if marked as `permanent`.
+  /// - [force] If true, deletes even the instances marked as `permanent`.
   void deleteAll({bool force = false}) {
     final keys = _singl.keys.toList();
     for (final key in keys) {
@@ -425,6 +463,10 @@ extension Inst on GetInterface {
     }
   }
 
+  /// Reloads all registered instances by clearing their active dependency objects
+  /// and resetting their initialization states.
+  ///
+  /// - [force] If true, reloads even the instances marked as `permanent`.
   void reloadAll({bool force = false}) {
     _singl.forEach((key, value) {
       if (value.permanent && !force) {
@@ -437,6 +479,14 @@ extension Inst on GetInterface {
     });
   }
 
+  /// Reloads/restarts a specific registered dependency of type [S].
+  ///
+  /// Clears the active dependency object and calls its `onDelete` lifecycle
+  /// before resetting its initialization state.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  /// - [key] Optional unique registry key.
+  /// - [force] If true, reloads even if the instance is marked as `permanent`.
   void reload<S>({String? tag, String? key, bool force = false}) {
     final newKey = key ?? _getKey(S, tag);
 
@@ -467,13 +517,15 @@ extension Inst on GetInterface {
     Get.log('Instance "$newKey" was restarted.');
   }
 
-  /// Check if a Class Instance<[S]> (or [tag]) is registered in memory.
-  /// - [tag] is optional, if you used a [tag] to register the Instance.
+  /// Checks whether an instance of type [S] (and optionally with [tag]) is registered in memory.
+  ///
+  /// - [tag] Optional tag to identify the instance.
   bool isRegistered<S>({String? tag}) => _singl.containsKey(_getKey(S, tag));
 
-  /// Checks if a lazy factory callback `Get.lazyPut()` that returns an
-  /// Instance<[S]> is registered in memory.
-  /// - [tag] is optional, if you used a [tag] to register the lazy Instance.
+  /// Checks whether a lazy factory callback for type [S] (and optionally with [tag]) is registered
+  /// and ready to be initialized.
+  ///
+  /// - [tag] Optional tag to identify the lazy instance.
   bool isPrepared<S>({String? tag}) {
     final newKey = _getKey(S, tag);
 
@@ -489,10 +541,13 @@ extension Inst on GetInterface {
   }
 }
 
+/// Callback type for building singleton or lazy instances of type [S].
 typedef InstanceBuilderCallback<S> = S Function();
 
+/// Callback type for building instances of type [S] on demand using [BuildContext].
 typedef InstanceCreateBuilderCallback<S> = S Function(BuildContext _);
 
+/// Callback type for asynchronously building instances of type [S].
 typedef AsyncInstanceBuilderCallback<S> = Future<S> Function();
 
 /// Internal class to register instances with `Get.put<S>()`.
@@ -542,7 +597,7 @@ class _InstanceBuilderFactory<S> {
     }
   }
 
-  /// Gets the actual instance by it's [builderFunc] or the persisted instance.
+  /// Gets the actual instance by its [builderFunc] or the persisted instance.
   S getDependency() {
     if (isSingleton == true) {
       if (dependency == null) {
