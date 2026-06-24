@@ -5,58 +5,47 @@ part of '../rx_types.dart';
 /// of those `Widgets` and Rx values.
 
 mixin RxObjectMixin<T> on GetListenable<T> {
-
-  /// Makes a direct update of [value] adding it to the Stream
-  /// useful when you make use of Rx for custom Types to refresh your UI.
-  ///
-  /// Sample:
-  /// ```
-  ///  class Person {
-  ///     String name, last;
-  ///     int age;
-  ///     Person({this.name, this.last, this.age});
-  ///     @override
-  ///     String toString() => '$name $last, $age years old';
-  ///  }
-  ///
-  /// final person = Person(name: 'John', last: 'Doe', age: 18).obs;
-  /// person.value.name = 'Roi';
-  /// person.refresh();
-  /// print( person );
-  /// ```
-
-  /// updates the value to `null` and adds it to the Stream.
-  /// Even with null-safety coming, is still an important feature to support, as
-  /// `call()` doesn't accept `null` values. For instance,
-  /// `InputDecoration.errorText` has to be null to not show the "error state".
-  ///
-  /// Sample:
-  /// ```
-  /// final inputError = ''.obs..nil();
-  /// print('${inputError.runtimeType}: $inputError'); // outputs > RxString: null
-  /// ```
-  /// Makes this Rx looks like a function so you can update a new
+  /// Makes this Rx look like a function so you can update a new
   /// value using `rx(someOtherValue)`. Practical to assign the Rx directly
-  /// to some Widget that has a signature ::onChange( value )
+  /// to some Widget that has a signature `::onChange(value)`.
   ///
   /// Example:
-  /// ```
+  /// ```dart
   /// final myText = 'GetX rocks!'.obs;
   ///
   /// // in your Constructor, just to check it works :P
-  /// ever( myText, print ) ;
+  /// ever(myText, print);
   ///
   /// // in your build(BuildContext) {
   /// TextField(
   ///   onChanged: myText,
   /// ),
-  ///```
+  /// ```
   @override
   T call([T? v]) {
     if (v != null) {
       value = v;
     }
     return value;
+  }
+
+  /// Forcefully notifies all listeners about the current [value], even if the
+  /// value hasn't changed. Useful for refreshing custom objects and triggering UI updates.
+  ///
+  /// Example:
+  /// ```dart
+  /// class Person {
+  ///   String name;
+  ///   Person(this.name);
+  /// }
+  ///
+  /// final person = Person('John').obs;
+  /// person.value.name = 'Jane';
+  /// person.refresh(); // Notifies Obx to rebuild the widget
+  /// ```
+  @override
+  void refresh() {
+    super.refresh();
   }
 
   bool firstRebuild = true;

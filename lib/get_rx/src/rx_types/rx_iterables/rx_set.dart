@@ -1,14 +1,14 @@
 part of '../rx_types.dart';
 
+/// Create a set similar to `Set<T>` but reactive.
 class RxSet<E> extends GetListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
   RxSet([super.initial = const {}]);
 
   /// Special override to push() element(s) in a reactive way
-  /// inside the List,
+  /// inside the Set.
   RxSet<E> operator +(Set<E> val) {
     addAll(val);
-    //refresh();
     return this;
   }
 
@@ -16,22 +16,6 @@ class RxSet<E> extends GetListenable<Set<E>>
     fn(value);
     refresh();
   }
-
-  // @override
-  // @protected
-  // Set<E> get value {
-  //   return subject.value;
-  //   // RxInterface.proxy?.addListener(subject);
-  //   // return _value;
-  // }
-
-  // @override
-  // @protected
-  // set value(Set<E> val) {
-  //   if (value == val) return;
-  //   value = val;
-  //   refresh();
-  // }
 
   @override
   bool add(E value) {
@@ -101,22 +85,18 @@ class RxSet<E> extends GetListenable<Set<E>>
     value.retainWhere(test);
     refresh();
   }
+
+  @override
+  void removeWhere(bool Function(E) test) {
+    value.removeWhere(test);
+    refresh();
+  }
 }
 
 extension SetExtension<E> on Set<E> {
   RxSet<E> get obs {
     return RxSet<E>(<E>{})..addAll(this);
   }
-
-  // /// Add [item] to [List<E>] only if [item] is not null.
-  // void addNonNull(E item) {
-  //   if (item != null) add(item);
-  // }
-
-  // /// Add [Iterable<E>] to [Set<E>] only if [Iterable<E>] is not null.
-  // void addAllNonNull(Iterable<E> item) {
-  //   if (item != null) addAll(item);
-  // }
 
   /// Add [item] to [Set<E>] only if [condition] is true.
   void addIf(Object? condition, E item) {
@@ -132,19 +112,12 @@ extension SetExtension<E> on Set<E> {
 
   /// Replaces all existing items of this set with [item]
   void assign(E item) {
-    // if (this is RxSet) {
-    //   (this as RxSet)._value;
-    // }
-
     clear();
     add(item);
   }
 
   /// Replaces all existing items of this set with [items]
   void assignAll(Iterable<E> items) {
-    // if (this is RxSet) {
-    //   (this as RxSet)._value;
-    // }
     clear();
     addAll(items);
   }

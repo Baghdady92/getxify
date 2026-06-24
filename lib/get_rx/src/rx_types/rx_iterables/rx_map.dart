@@ -1,5 +1,6 @@
 part of '../rx_types.dart';
 
+/// Create a map similar to `Map<K, V>` but reactive.
 class RxMap<K, V> extends GetListenable<Map<K, V>>
     with MapMixin<K, V>, RxObjectMixin<Map<K, V>> {
   RxMap([super.initial = const {}]);
@@ -13,7 +14,7 @@ class RxMap<K, V> extends GetListenable<Map<K, V>>
     return RxMap(Map.of(other));
   }
 
-  ///Creates an unmodifiable hash based map containing the entries of [other].
+  /// Creates an unmodifiable hash based map containing the entries of [other].
   factory RxMap.unmodifiable(Map<Object?, Object?> other) {
     return RxMap(Map.unmodifiable(other));
   }
@@ -50,13 +51,46 @@ class RxMap<K, V> extends GetListenable<Map<K, V>>
     return val;
   }
 
-  // @override
-  // @protected
-  // Map<K, V> get value {
-  //   return subject.value;
-  //   // RxInterface.proxy?.addListener(subject);
-  //   // return _value;
-  // }
+  @override
+  void addAll(Map<K, V> other) {
+    value.addAll(other);
+    refresh();
+  }
+
+  @override
+  void addEntries(Iterable<MapEntry<K, V>> newEntries) {
+    value.addEntries(newEntries);
+    refresh();
+  }
+
+  @override
+  V putIfAbsent(K key, V Function() ifAbsent) {
+    final hasKey = value.containsKey(key);
+    final val = value.putIfAbsent(key, ifAbsent);
+    if (!hasKey) {
+      refresh();
+    }
+    return val;
+  }
+
+  @override
+  V update(K key, V Function(V value) update, {V Function()? ifAbsent}) {
+    final val = value.update(key, update, ifAbsent: ifAbsent);
+    refresh();
+    return val;
+  }
+
+  @override
+  void updateAll(V Function(K key, V value) update) {
+    value.updateAll(update);
+    refresh();
+  }
+
+  @override
+  void removeWhere(bool Function(K key, V value) test) {
+    value.removeWhere(test);
+    refresh();
+  }
 }
 
 extension MapExtension<K, V> on Map<K, V> {
@@ -64,6 +98,7 @@ extension MapExtension<K, V> on Map<K, V> {
     return RxMap<K, V>(this);
   }
 
+  /// Adds [key] and [value] to map if [condition] is true.
   void addIf(Object? condition, K key, V value) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) {
@@ -71,15 +106,16 @@ extension MapExtension<K, V> on Map<K, V> {
     }
   }
 
+  /// Adds all [values] to map if [condition] is true.
   void addAllIf(Object? condition, Map<K, V> values) {
     if (condition is Condition) condition = condition();
     if (condition is bool && condition) addAll(values);
   }
 
+  /// Replaces all existing items of this map with [key] and [val].
   void assign(K key, V val) {
     if (this is RxMap) {
       final map = (this as RxMap);
-      // map._value;
       map.value.clear();
       this[key] = val;
     } else {
@@ -88,6 +124,7 @@ extension MapExtension<K, V> on Map<K, V> {
     }
   }
 
+  /// Replaces all existing items of this map with [val].
   void assignAll(Map<K, V> val) {
     if (val is RxMap && this is RxMap) {
       if ((val as RxMap).value == (this as RxMap).value) return;

@@ -1,6 +1,6 @@
 part of '../rx_types.dart';
 
-/// Create a list similar to `List<T>`
+/// Create a list similar to `List<T>` but reactive.
 class RxList<E> extends GetListenable<List<E>>
     with ListMixin<E>, RxObjectMixin<List<E>> {
   RxList([super.initial = const []]);
@@ -47,11 +47,10 @@ class RxList<E> extends GetListenable<List<E>>
   }
 
   /// Special override to push() element(s) in a reactive way
-  /// inside the List,
+  /// inside the List.
   @override
   RxList<E> operator +(Iterable<E> val) {
     addAll(val);
-    // refresh();
     return this;
   }
 
@@ -94,16 +93,41 @@ class RxList<E> extends GetListenable<List<E>>
   @override
   int get length => value.length;
 
-  // @override
-  // @protected
-  // List<E> get value {
-  //   RxInterface.proxy?.addListener(subject);
-  //   return subject.value;
-  // }
-
   @override
   set length(int newLength) {
     value.length = newLength;
+    refresh();
+  }
+
+  @override
+  void clear() {
+    value.clear();
+    refresh();
+  }
+
+  @override
+  E removeAt(int index) {
+    final result = value.removeAt(index);
+    refresh();
+    return result;
+  }
+
+  @override
+  E removeLast() {
+    final result = value.removeLast();
+    refresh();
+    return result;
+  }
+
+  @override
+  void removeRange(int start, int end) {
+    value.removeRange(start, end);
+    refresh();
+  }
+
+  @override
+  void insert(int index, E element) {
+    value.insert(index, element);
     refresh();
   }
 
@@ -116,11 +140,29 @@ class RxList<E> extends GetListenable<List<E>>
   @override
   Iterable<E> get reversed => value.reversed;
 
-  // @override
-  // set value(List<E> val) {
-  //   value = val;
-  //   refresh();
-  // }
+  @override
+  void setRange(int start, int end, Iterable<E> iterable, [int skipCount = 0]) {
+    value.setRange(start, end, iterable, skipCount);
+    refresh();
+  }
+
+  @override
+  void fillRange(int start, int end, [E? fillValue]) {
+    value.fillRange(start, end, fillValue);
+    refresh();
+  }
+
+  @override
+  void replaceRange(int start, int end, Iterable<E> replacement) {
+    value.replaceRange(start, end, replacement);
+    refresh();
+  }
+
+  @override
+  void setAll(int index, Iterable<E> iterable) {
+    value.setAll(index, iterable);
+    refresh();
+  }
 
   @override
   Iterable<E> where(bool Function(E) test) {
@@ -161,10 +203,6 @@ extension ListExtension<E> on List<E> {
 
   /// Replaces all existing items of this list with [item]
   void assign(E item) {
-    // if (this is RxSet) {
-    //   (this as RxSet)._value;
-    // }
-
     if (this is RxList) {
       (this as RxList).value.clear();
     } else {
@@ -180,7 +218,6 @@ extension ListExtension<E> on List<E> {
     } else {
       clear();
     }
-    //clear();
     addAll(items);
   }
 }

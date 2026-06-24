@@ -254,9 +254,7 @@ class Worker {
 
   bool get disposed => _disposed;
 
-  //final bool _verbose = true;
   void _log(String msg) {
-    //  if (!_verbose) return;
     Get.log('$runtimeType $type $msg');
   }
 

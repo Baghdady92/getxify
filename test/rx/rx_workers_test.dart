@@ -155,7 +155,7 @@ void main() {
       currentString = newString;
     });
 
-    expect(reactiveString.endsWith("c"), true);
+    expect(reactiveString.value.endsWith("c"), true);
 
     // we call 3
     reactiveString("b");
@@ -176,7 +176,7 @@ void main() {
     reactiveString("abc");
 
     await Future.delayed(Duration.zero);
-    expect(reactiveString.endsWith("c"), true);
+    expect(reactiveString.value!.endsWith("c"), true);
     expect(currentString, "abc");
   });
 
