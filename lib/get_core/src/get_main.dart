@@ -1,12 +1,14 @@
 import 'get_interface.dart';
 
-///Use to instead of Navigator.push, off instead of Navigator.pushReplacement,
-///offAll instead of Navigator.pushAndRemoveUntil. For named routes just
-///add "named" after them. Example: toNamed, offNamed, and AllNamed.
-///To return to the previous screen, use back().
-///No need to pass any context to Get, just put the name of the route inside
-///the parentheses and the magic will occur.
+/// The concrete implementation of [GetInterface].
+///
+/// This implementation allows extensions to add state management, navigation,
+/// dependency injection, and internationalization APIs onto the global [Get] object.
 class _GetImpl extends GetInterface {}
 
+/// The global entrypoint for accessing GetX APIs.
+///
+/// Features are added to this instance via extensions (e.g., `Inst` for dependency
+/// management, `GetNavigation` for routing, etc.).
 // ignore: non_constant_identifier_names
 final Get = _GetImpl();
