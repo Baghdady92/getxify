@@ -147,14 +147,14 @@ class RxList<E> extends GetListenable<List<E>>
   }
 
   @override
-  void fillRange(int start, int end, [E? fillValue]) {
-    value.fillRange(start, end, fillValue);
+  void fillRange(int start, int end, [E? fill]) {
+    value.fillRange(start, end, fill);
     refresh();
   }
 
   @override
-  void replaceRange(int start, int end, Iterable<E> replacement) {
-    value.replaceRange(start, end, replacement);
+  void replaceRange(int start, int end, Iterable<E> newContents) {
+    value.replaceRange(start, end, newContents);
     refresh();
   }
 

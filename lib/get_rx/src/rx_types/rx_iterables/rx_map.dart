@@ -24,6 +24,25 @@ class RxMap<K, V> extends GetListenable<Map<K, V>>
     return RxMap(Map.identity());
   }
 
+  /// Creates a [Map] where the keys and values are computed from [iterable].
+  factory RxMap.fromIterable(
+    Iterable iterable, {
+    K Function(dynamic element)? key,
+    V Function(dynamic element)? value,
+  }) {
+    return RxMap(Map.fromIterable(iterable, key: key, value: value));
+  }
+
+  /// Creates a [Map] associating the given [keys] to [values].
+  factory RxMap.fromIterables(Iterable<K> keys, Iterable<V> values) {
+    return RxMap(Map.fromIterables(keys, values));
+  }
+
+  /// Creates a [Map] from [entries].
+  factory RxMap.fromEntries(Iterable<MapEntry<K, V>> entries) {
+    return RxMap(Map.fromEntries(entries));
+  }
+
   @override
   V? operator [](Object? key) {
     return value[key as K];

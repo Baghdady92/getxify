@@ -5,6 +5,25 @@ class RxSet<E> extends GetListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
   RxSet([super.initial = const {}]);
 
+  factory RxSet.from(Iterable elements) {
+    return RxSet(Set.from(elements));
+  }
+
+  /// Creates a [Set] from [elements].
+  factory RxSet.of(Iterable<E> elements) {
+    return RxSet(Set.of(elements));
+  }
+
+  /// Creates an unmodifiable set containing all [elements].
+  factory RxSet.unmodifiable(Iterable<E> elements) {
+    return RxSet(Set.unmodifiable(elements));
+  }
+
+  /// Creates an identity set with the default implementation, [LinkedHashSet].
+  factory RxSet.identity() {
+    return RxSet(Set.identity());
+  }
+
   /// Special override to push() element(s) in a reactive way
   /// inside the Set.
   RxSet<E> operator +(Set<E> val) {

@@ -113,7 +113,6 @@ mixin RxObjectMixin<T> on GetListenable<T> {
   /// Closing the subscription will happen automatically when the observer
   /// Widget (`GetX` or `Obx`) gets unmounted from the Widget tree.
   void bindStream(Stream<T> stream) {
-
     final sub = stream.listen((va) => value = va);
     reportAdd(sub.cancel);
   }
@@ -314,10 +313,8 @@ extension RxT<T extends Object> on T {
   Rx<T> get obs => Rx<T>(this);
 }
 
-/// This method will replace the old `.obs` method.
-/// It's a breaking change, but it is essential to avoid conflicts with
-/// the new dart 3 features. T will be inferred by contextual type inference
-/// rather than the extension type.
+/// This method replaces the old `.obs` extension to avoid conflicts with
+/// Dart 3 features. T will be inferred by contextual type inference.
 extension RxTnew on Object {
   /// Returns a `Rx` instance with [this] `T` as initial value.
   Rx<T> obs<T>() => Rx<T>(this as T);
