@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:getxify/get_utils/src/extensions/iterable_extensions.dart';
 
-import '../../../get_core/get_core.dart';
-import '../../../get_instance/src/bindings_interface.dart';
-import '../../../get_navigation/get_navigation.dart';
-import '../../../get_utils/src/platform/platform.dart';
+import '../../../../get_core/get_core.dart';
+import '../../../../get_instance/src/bindings_interface.dart';
+import '../../../../get_navigation/get_navigation.dart';
+import '../../../../get_utils/src/platform/platform.dart';
 
 class NavigationException implements Exception {
   final String message;

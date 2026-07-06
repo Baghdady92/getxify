@@ -8,7 +8,7 @@ class _GetImpl extends GetInterface {}
 
 /// The global entrypoint for accessing GetX APIs.
 ///
-/// Features are added to this instance via extensions (e.g., `Inst` for dependency
+/// Features are added to this instance via extensions (e.g., `GetInstanceExt` for dependency
 /// management, `GetNavigation` for routing, etc.).
 // ignore: non_constant_identifier_names
 final Get = _GetImpl();

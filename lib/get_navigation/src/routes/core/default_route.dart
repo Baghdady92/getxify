@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
-import '../../../getxify.dart';
-import '../router_report.dart';
+import '../../../../getxify.dart';
+import '../../router_report.dart';
 
 /// Mixin that reports route lifecycle events to the [RouterReportManager].
 ///

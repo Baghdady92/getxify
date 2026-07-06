@@ -1,6 +1,10 @@
-## Unreleased
+## 3.0.0
 
 ### Code Quality Improvements
+
+- **Restructured navigation routes** - Reorganized the flat `lib/get_navigation/src/routes/` directory into three structured subdirectories (`transitions/`, `router/`, and `core/`) to improve codebase organization and readability.
+
+- **Refactored naming conventions** - Renamed the legacy truncated private map `_singl` to `_singletons` and the `Inst` extension to `GetInstanceExt` in `extension_instance.dart`. Renamed the `RxTnew` extension to `RxTNew` in `rx_impl.dart` to adhere to Dart's UpperCamelCase style guidelines.
 
 - **Fixed parameter naming in RxList** - Corrected parameter names in `fillRange` and `replaceRange` methods to match the overridden method signatures from Dart's List interface (changed `fillValue` to `fill` and `replacement` to `newContents`)
 

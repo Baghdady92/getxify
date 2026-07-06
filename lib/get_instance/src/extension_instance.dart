@@ -63,14 +63,14 @@ extension ResetInstance on GetInterface {
   ///
   bool resetInstance({bool clearRouteBindings = true}) {
     if (clearRouteBindings) RouterReportManager.instance.clearRouteKeys();
-    Inst._singl.clear();
+    GetInstanceExt._singletons.clear();
 
     return true;
   }
 }
 
 /// Main extension on [GetInterface] providing dependency injection features.
-extension Inst on GetInterface {
+extension GetInstanceExt on GetInterface {
   /// A callable shortcut to find/retrieve a registered dependency.
   ///
   /// Example:
@@ -81,7 +81,7 @@ extension Inst on GetInterface {
 
   /// Holds references to every registered Instance when using
   /// `Get.put()`
-  static final Map<String, _InstanceBuilderFactory<Object?>> _singl = {};
+  static final Map<String, _InstanceBuilderFactory<Object?>> _singletons = {};
 
   /// Injects a [dependency] into the dependency manager and immediately initializes it.
   ///
@@ -176,8 +176,8 @@ extension Inst on GetInterface {
     final key = _getKey(S, name);
 
     _InstanceBuilderFactory<S>? dep;
-    if (_singl.containsKey(key)) {
-      final newDep = _singl[key];
+    if (_singletons.containsKey(key)) {
+      final newDep = _singletons[key];
       if (newDep == null || !newDep.isDirty) {
         return;
       } else {
@@ -186,7 +186,7 @@ extension Inst on GetInterface {
         }
       }
     }
-    _singl[key] = _InstanceBuilderFactory<S>(
+    _singletons[key] = _InstanceBuilderFactory<S>(
       isSingleton: isSingleton,
       builderFunc: builder,
       permanent: permanent,
@@ -208,7 +208,7 @@ extension Inst on GetInterface {
   /// work properly.
   S? _initDependencies<S>({String? name}) {
     final key = _getKey(S, name);
-    final dep = _singl[key];
+    final dep = _singletons[key];
     if (dep == null) return null;
     final isInit = dep.isInit;
     S? i;
@@ -248,18 +248,18 @@ extension Inst on GetInterface {
   }) {
     final newKey = key ?? _getKey(S, tag);
 
-    if (!_singl.containsKey(newKey)) {
+    if (!_singletons.containsKey(newKey)) {
       Get.log('Instance "$newKey" is not registered.', isError: true);
       return null;
     } else {
-      return _singl[newKey];
+      return _singletons[newKey];
     }
   }
 
   void markAsDirty<S>({String? tag, String? key}) {
     final newKey = key ?? _getKey(S, tag);
-    if (_singl.containsKey(newKey)) {
-      final dep = _singl[newKey];
+    if (_singletons.containsKey(newKey)) {
+      final dep = _singletons[newKey];
       if (dep != null && !dep.permanent) {
         dep.isDirty = true;
       }
@@ -269,7 +269,7 @@ extension Inst on GetInterface {
   /// Initializes the controller
   S _startController<S>({String? tag}) {
     final key = _getKey(S, tag);
-    final dep = _singl[key];
+    final dep = _singletons[key];
     if (dep == null) {
       throw InstanceNotFoundException(
         'Instance "$S" with tag "$tag" not found',
@@ -297,8 +297,8 @@ extension Inst on GetInterface {
   S putOrFind<S>(InstanceBuilderCallback<S> dep, {String? tag}) {
     final key = _getKey(S, tag);
 
-    if (_singl.containsKey(key)) {
-      final existing = _singl[key];
+    if (_singletons.containsKey(key)) {
+      final existing = _singletons[key];
       if (existing == null) {
         return put(dep(), tag: tag);
       }
@@ -316,7 +316,7 @@ extension Inst on GetInterface {
   S find<S>({String? tag}) {
     final key = _getKey(S, tag);
     if (isRegistered<S>(tag: tag)) {
-      final dep = _singl[key];
+      final dep = _singletons[key];
       if (dep == null) {
         if (tag == null) {
           throw InstanceNotFoundException('Class "$S" is not registered');
@@ -400,12 +400,12 @@ extension Inst on GetInterface {
   bool delete<S>({String? tag, String? key, bool force = false}) {
     final newKey = key ?? _getKey(S, tag);
 
-    if (!_singl.containsKey(newKey)) {
+    if (!_singletons.containsKey(newKey)) {
       Get.log('Instance "$newKey" already removed.', isError: true);
       return false;
     }
 
-    final dep = _singl[newKey];
+    final dep = _singletons[newKey];
 
     if (dep == null) return false;
 
@@ -442,8 +442,8 @@ extension Inst on GetInterface {
       dep.lateRemove = null;
       return true;
     } else {
-      _singl.remove(newKey);
-      if (_singl.containsKey(newKey)) {
+      _singletons.remove(newKey);
+      if (_singletons.containsKey(newKey)) {
         Get.log('Error removing object "$newKey"', isError: true);
       } else {
         Get.log('"$newKey" deleted from memory');
@@ -457,7 +457,7 @@ extension Inst on GetInterface {
   ///
   /// - [force] If true, deletes even the instances marked as `permanent`.
   void deleteAll({bool force = false}) {
-    final keys = _singl.keys.toList();
+    final keys = _singletons.keys.toList();
     for (final key in keys) {
       delete(key: key, force: force);
     }
@@ -468,7 +468,7 @@ extension Inst on GetInterface {
   ///
   /// - [force] If true, reloads even the instances marked as `permanent`.
   void reloadAll({bool force = false}) {
-    _singl.forEach((key, value) {
+    _singletons.forEach((key, value) {
       if (value.permanent && !force) {
         Get.log('Instance "$key" is permanent. Skipping reload');
       } else {
@@ -520,7 +520,7 @@ extension Inst on GetInterface {
   /// Checks whether an instance of type [S] (and optionally with [tag]) is registered in memory.
   ///
   /// - [tag] Optional tag to identify the instance.
-  bool isRegistered<S>({String? tag}) => _singl.containsKey(_getKey(S, tag));
+  bool isRegistered<S>({String? tag}) => _singletons.containsKey(_getKey(S, tag));
 
   /// Checks whether a lazy factory callback for type [S] (and optionally with [tag]) is registered
   /// and ready to be initialized.

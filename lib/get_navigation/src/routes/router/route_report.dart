@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../router_report.dart';
-import 'default_route.dart';
+import '../../router_report.dart';
+import '../core/default_route.dart';
 
 class RouteReport extends StatefulWidget {
   const RouteReport({super.key, required this.builder});
