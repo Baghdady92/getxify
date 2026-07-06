@@ -473,7 +473,7 @@ extension ExtensionSnackbar on GetInterface {
           Text(
             title,
             style: TextStyle(
-              color: colorText ?? iconColor ?? Colors.black,
+              color: colorText ?? theme.iconTheme.color ?? Colors.black,
               fontWeight: FontWeight.w800,
               fontSize: 16,
             ),
@@ -483,7 +483,7 @@ extension ExtensionSnackbar on GetInterface {
           Text(
             message,
             style: TextStyle(
-              color: colorText ?? iconColor ?? Colors.black,
+              color: colorText ?? theme.iconTheme.color ?? Colors.black,
               fontWeight: FontWeight.w300,
               fontSize: 14,
             ),
@@ -875,7 +875,7 @@ extension GetNavigationExt on GetInterface {
 
   void closeAllDialogsAndBottomSheets(String? id) {
     // It can not be divided, because dialogs and bottomsheets can not be consecutive
-    while (((isDialogOpen ?? false) && (isBottomSheetOpen ?? false))) {
+    while (((isDialogOpen ?? false) || (isBottomSheetOpen ?? false))) {
       closeOverlay(id: id);
     }
   }
@@ -1230,52 +1230,7 @@ extension GetNavigationExt on GetInterface {
 
   Locale? get deviceLocale => window.locale;
 
-  ///The number of device pixels for each logical pixel.
-  double get pixelRatio => window.implicitView!.devicePixelRatio;
 
-  Size get size => window.implicitView!.physicalSize / pixelRatio;
-
-  ///The horizontal extent of this size.
-  double get width => size.width;
-
-  ///The vertical extent of this size
-  double get height => size.height;
-
-  ///The distance from the top edge to the first unpadded pixel,
-  ///in physical pixels.
-  double get statusBarHeight => window.implicitView!.padding.top;
-
-  ///The distance from the bottom edge to the first unpadded pixel,
-  ///in physical pixels.
-  double get bottomBarHeight => window.implicitView!.padding.bottom;
-
-  ///The system-reported text scale.
-  double get textScaleFactor => window.textScaleFactor;
-
-  /// give access to TextTheme.of(context)
-  TextTheme get textTheme => theme.textTheme;
-
-  /// give access to Mediaquery.of(context)
-  MediaQueryData get mediaQuery => MediaQuery.of(context!);
-
-  /// Check if dark mode theme is enable
-  bool get isDarkMode => (theme.brightness == Brightness.dark);
-
-  /// Check if dark mode theme is enable on platform on android Q+
-  bool get isPlatformDarkMode =>
-      (ui.PlatformDispatcher.instance.platformBrightness == Brightness.dark);
-
-  /// give access to Theme.of(context).iconTheme.color
-  Color? get iconColor => theme.iconTheme.color;
-
-  /// give access to FocusScope.of(context)
-  FocusNode? get focusScope => FocusManager.instance.primaryFocus;
-
-  // /// give access to Immutable MediaQuery.of(context).size.height
-  // double get height => MediaQuery.of(context).size.height;
-
-  // /// give access to Immutable MediaQuery.of(context).size.width
-  // double get width => MediaQuery.of(context).size.width;
 
   GlobalKey<NavigatorState> get key => rootController.key;
 
