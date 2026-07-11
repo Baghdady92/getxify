@@ -20,6 +20,17 @@ class RouteNotFoundException implements Exception {
 /// Navigator.push(context, YourRoute());
 NavigatorState? get navigator => GetNavigationExt(Get).key.currentState;
 
+/// Whether [route] displays a dialog, either GetX's own [GetDialogRoute]
+/// or one created by Flutter's native `showDialog`/`showGeneralDialog`.
+bool _isDialogRoute(Route<dynamic>? route) =>
+    route is GetDialogRoute || route is RawDialogRoute;
+
+/// Whether [route] displays a bottom sheet, either GetX's own
+/// [GetModalBottomSheetRoute] or one created by Flutter's native
+/// `showModalBottomSheet`.
+bool _isBottomSheetRoute(Route<dynamic>? route) =>
+    route is GetModalBottomSheetRoute || route is ModalBottomSheetRoute;
+
 extension ExtensionBottomSheet on GetInterface {
   Future<T?> bottomSheet<T>(
     Widget bottomsheet, {
@@ -203,6 +214,7 @@ extension ExtensionDialog on GetInterface {
     GlobalKey<NavigatorState>? navigatorKey,
     Offset? anchorPoint,
     TraversalEdgeBehavior? traversalEdgeBehavior,
+    bool scrollable = false,
   }) {
     var leanCancel = onCancel != null || textCancel != null;
     var leanConfirm = onConfirm != null || textConfirm != null;
@@ -275,6 +287,7 @@ extension ExtensionDialog on GetInterface {
         return AlertDialog(
           titlePadding: titlePadding ?? const EdgeInsets.all(8),
           contentPadding: contentPadding ?? const EdgeInsets.all(8),
+          scrollable: scrollable,
 
           backgroundColor:
               backgroundColor ?? DialogTheme.of(context).backgroundColor,
@@ -805,11 +818,15 @@ extension GetNavigationExt on GetInterface {
 
   /// Returns true if a Snackbar, Dialog or BottomSheet is currently OPEN
   bool get isOverlaysOpen =>
-      (isSnackbarOpen || (isDialogOpen ?? false) || (isBottomSheetOpen ?? false));
+      (isSnackbarOpen ||
+      (isDialogOpen ?? false) ||
+      (isBottomSheetOpen ?? false));
 
   /// Returns true if there is no Snackbar, Dialog or BottomSheet open
   bool get isOverlaysClosed =>
-      (!isSnackbarOpen && !(isDialogOpen ?? false) && !(isBottomSheetOpen ?? false));
+      (!isSnackbarOpen &&
+      !(isDialogOpen ?? false) &&
+      !(isBottomSheetOpen ?? false));
 
   /// **Navigation.popUntil()** shortcut.<br><br>
   ///
@@ -873,42 +890,83 @@ extension GetNavigationExt on GetInterface {
     }
   }
 
+  /// Returns the topmost [Route] on the navigator of the delegate
+  /// matching [id], without popping it.
+  Route<dynamic>? _topRoute({String? id}) {
+    Route<dynamic>? currentRoute;
+    searchDelegate(id).navigatorKey.currentState?.popUntil((route) {
+      currentRoute = route;
+      return true;
+    });
+    return currentRoute;
+  }
+
   void closeAllDialogsAndBottomSheets(String? id) {
     // It can not be divided, because dialogs and bottomsheets can not be consecutive
-    while (((isDialogOpen ?? false) || (isBottomSheetOpen ?? false))) {
+    var topRoute = _topRoute(id: id);
+    while (_isDialogRoute(topRoute) || _isBottomSheetRoute(topRoute)) {
       closeOverlay(id: id);
+      topRoute = _topRoute(id: id);
     }
   }
 
-  void closeAllDialogs({String? id}) {
-    while ((isDialogOpen ?? false)) {
-      closeOverlay(id: id);
+  /// Close all currently open dialogs, returning a [result] to each
+  /// of them, if provided
+  void closeAllDialogs<T>({String? id, T? result}) {
+    while (_isDialogRoute(_topRoute(id: id))) {
+      closeOverlay(id: id, result: result);
     }
   }
 
   /// Close the currently open dialog, returning a [result], if provided
   void closeDialog<T>({String? id, T? result}) {
     // Stop if there is no dialog open
-    if (!(isDialogOpen ?? false)) return;
+    if (!_isDialogRoute(_topRoute(id: id))) return;
 
     closeOverlay(id: id, result: result);
   }
 
   void closeBottomSheet<T>({String? id, T? result}) {
     // Stop if there is no bottomsheet open
-    if (!(isBottomSheetOpen ?? false)) return;
+    if (!_isBottomSheetRoute(_topRoute(id: id))) return;
 
     closeOverlay(id: id, result: result);
   }
 
-  /// Close the current overlay returning the [result], if provided
+  /// Close the current overlay (e.g. dialog or bottom sheet) returning
+  /// the [result], if provided.
+  ///
+  /// Page routes managed by the router delegate are never popped by this
+  /// method. If the navigator still shows a page that was already removed
+  /// declaratively (for example by a [back] call awaited in the same frame),
+  /// the pop is retried once after the pending frame settles, so the actual
+  /// overlay is closed instead of a page.
   void closeOverlay<T>({String? id, T? result}) {
-    searchDelegate(id).navigatorKey.currentState?.pop(result);
+    final navigatorState = searchDelegate(id).navigatorKey.currentState;
+    if (navigatorState == null) return;
+
+    final topRoute = _topRoute(id: id);
+    if (topRoute == null) return;
+
+    if (topRoute.settings is Page) {
+      engine.addPostFrameCallback((_) {
+        if (!GetRoot.treeInitialized) return;
+        final route = _topRoute(id: id);
+        if (route != null && route.settings is! Page) {
+          searchDelegate(id).navigatorKey.currentState?.pop(result);
+        }
+      });
+      return;
+    }
+
+    navigatorState.pop(result);
   }
 
-  void closeAllBottomSheets({String? id}) {
-    while ((isBottomSheetOpen ?? false)) {
-      searchDelegate(id).navigatorKey.currentState?.pop();
+  /// Close all currently open bottom sheets, returning a [result] to each
+  /// of them, if provided
+  void closeAllBottomSheets<T>({String? id, T? result}) {
+    while (_isBottomSheetRoute(_topRoute(id: id))) {
+      closeOverlay(id: id, result: result);
     }
   }
 
@@ -917,9 +975,12 @@ extension GetNavigationExt on GetInterface {
     closeAllSnackbars();
   }
 
-  /// **Navigation.popUntil()** (with predicate) shortcut .<br><br>
+  /// Closes the currently open snackbars, dialogs and bottom sheets.
   ///
-  /// Close as many routes as defined by [times]
+  /// When [closeAll] is true (the default), every open overlay of the
+  /// selected kinds is closed; otherwise only the topmost one is.
+  /// Dialogs and bottom sheets are closed returning [result] to the
+  /// `Future` returned when they were opened.
   ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
@@ -933,8 +994,8 @@ extension GetNavigationExt on GetInterface {
   }) {
     void handleClose(
       bool closeCondition,
-      Function closeAllFunction,
-      Function closeSingleFunction, [
+      void Function() closeAllFunction,
+      void Function() closeSingleFunction, [
       bool? isOpenCondition,
     ]) {
       if (closeCondition) {
@@ -947,12 +1008,17 @@ extension GetNavigationExt on GetInterface {
     }
 
     handleClose(closeSnackbar, closeAllSnackbars, closeCurrentSnackbar);
-    handleClose(closeDialog, closeAllDialogs, closeOverlay, isDialogOpen);
+    handleClose(
+      closeDialog,
+      () => closeAllDialogs(id: id, result: result),
+      () => closeOverlay(id: id, result: result),
+      _isDialogRoute(_topRoute(id: id)),
+    );
     handleClose(
       closeBottomSheet,
-      closeAllBottomSheets,
-      closeOverlay,
-      isBottomSheetOpen,
+      () => closeAllBottomSheets(id: id, result: result),
+      () => closeOverlay(id: id, result: result),
+      _isBottomSheetRoute(_topRoute(id: id)),
     );
   }
 
@@ -1107,6 +1173,10 @@ extension GetNavigationExt on GetInterface {
 
   Future<void> updateLocale(Locale l) async {
     Get.locale = l;
+    // Record that the locale was chosen explicitly so that subsequent
+    // device locale changes never clobber the user's selection, even when
+    // the chosen locale matches the locale last auto-applied from the device.
+    rootController.localeSetExplicitly = true;
     await forceAppUpdate();
   }
 
@@ -1175,8 +1245,10 @@ extension GetNavigationExt on GetInterface {
   /// give name from previous route
   String get previousRoute => routing.previous;
 
-  /// check if snackbar is open
+  /// check if snackbar is open,
+  /// or false if routing is not initialized yet
   bool get isSnackbarOpen =>
+      GetRoot.treeInitialized &&
       SnackbarController.isSnackbarBeingShown; //routing.isSnackbar;
 
   void closeAllSnackbars() {
@@ -1187,11 +1259,14 @@ extension GetNavigationExt on GetInterface {
     await SnackbarController.closeCurrentSnackbar();
   }
 
-  /// check if dialog is open
-  bool? get isDialogOpen => routing.isDialog;
+  /// check if dialog is open,
+  /// or null if routing is not initialized yet
+  bool? get isDialogOpen => GetRoot.treeInitialized ? routing.isDialog : null;
 
-  /// check if bottomsheet is open
-  bool? get isBottomSheetOpen => routing.isBottomSheet;
+  /// check if bottomsheet is open,
+  /// or null if routing is not initialized yet
+  bool? get isBottomSheetOpen =>
+      GetRoot.treeInitialized ? routing.isBottomSheet : null;
 
   /// check a raw current route
   Route<dynamic>? get rawRoute => routing.route;
@@ -1229,8 +1304,6 @@ extension GetNavigationExt on GetInterface {
   ui.PlatformDispatcher get window => engine.platformDispatcher;
 
   Locale? get deviceLocale => window.locale;
-
-
 
   GlobalKey<NavigatorState> get key => rootController.key;
 

@@ -344,7 +344,8 @@ class GetMaterialApp extends StatelessWidget {
                   routeInformationParser:
                       controller.config.routeInformationParser,
                   backButtonDispatcher: backButtonDispatcher,
-                  routeInformationProvider: routeInformationProvider,
+                  routeInformationProvider:
+                      controller.config.routeInformationProvider,
                   key: controller.config.unikey,
                   builder: (context, child) => Directionality(
                     textDirection:

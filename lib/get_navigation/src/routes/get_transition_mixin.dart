@@ -206,7 +206,7 @@ class GetBackGestureController<T> {
       );
     } else {
       // This route is destined to pop at this point. Reuse navigator's pop.
-      Get.back();
+      navigator.pop();
 
       // The popping may have finished inline if already at the
       // target destination.
@@ -343,6 +343,8 @@ Cannot read the previousTitle for a route that has not yet been installed''');
     return (nextRoute is GetPageRouteTransitionMixin &&
             !nextRoute.fullscreenDialog &&
             nextRoute.showCupertinoParallax) ||
+        (nextRoute is MaterialRouteTransitionMixin &&
+            !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoRouteTransitionMixin &&
             !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoSheetRoute && !nextRoute.fullscreenDialog);

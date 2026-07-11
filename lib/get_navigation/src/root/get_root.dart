@@ -326,15 +326,28 @@ class GetRoot extends StatefulWidget {
 
 class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
   static GetRootState? _controller;
-  static GetRootState get controller {
-    if (_controller == null) {
+
+  /// Detached placeholder returned by [controller] before a [GetRoot] is
+  /// inserted in the tree. It allows key-based APIs such as `Get.key` to be
+  /// evaluated while the app widget is still being constructed (for example
+  /// `GetMaterialApp(navigatorKey: Get.key)`), while any access that truly
+  /// requires a mounted [GetRoot] keeps throwing a descriptive exception.
+  static GetRootState? _detached;
+
+  static GetRootState get controller =>
+      _controller ?? (_detached ??= GetRootState());
+
+  ConfigData? _config;
+
+  ConfigData get config {
+    final currentConfig = _config;
+    if (currentConfig == null) {
       throw Exception('GetRoot is not part of the tree');
-    } else {
-      return _controller!;
     }
+    return currentConfig;
   }
 
-  late ConfigData config;
+  set config(ConfigData newConfig) => _config = newConfig;
 
   @override
   void initState() {
@@ -345,14 +358,27 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     super.initState();
   }
 
-  // @override
-  // void didUpdateWidget(covariant GetRoot oldWidget) {
-  //   if (oldWidget.config != widget.config) {
-  //     config = widget.config;
-  //   }
-
-  //   super.didUpdateWidget(oldWidget);
-  // }
+  @override
+  void didUpdateWidget(covariant GetRoot oldWidget) {
+    final oldConfig = oldWidget.config;
+    final newConfig = widget.config;
+    if (oldConfig.theme != newConfig.theme && newConfig.theme != null) {
+      config = config.copyWith(theme: newConfig.theme);
+    }
+    if (oldConfig.darkTheme != newConfig.darkTheme &&
+        newConfig.darkTheme != null) {
+      config = config.copyWith(darkTheme: newConfig.darkTheme);
+    }
+    if (oldConfig.themeMode != newConfig.themeMode &&
+        newConfig.themeMode != null) {
+      config = config.copyWith(themeMode: newConfig.themeMode);
+    }
+    if (oldConfig.locale != newConfig.locale && newConfig.locale != null) {
+      Get.locale = newConfig.locale;
+      config = config.copyWith(locale: newConfig.locale);
+    }
+    super.didUpdateWidget(oldWidget);
+  }
 
   void onClose() {
     config.onDispose?.call();
@@ -388,7 +414,7 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
                 ),
               ],
           notFoundRoute: config.unknownRoute,
-          navigatorKey: config.navigatorKey,
+          navigatorKey: config.navigatorKey ?? _fallbackKey,
           navigatorObservers: (config.navigatorObservers == null
               ? <NavigatorObserver>[
                   GetObserver(config.routingCallback, Get.routing),
@@ -412,6 +438,22 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
 
         config = config.copyWith(
           routeInformationParser: newRouteInformationParser,
+        );
+      }
+
+      final delegate = config.routerDelegate;
+      if (config.routeInformationProvider == null && delegate is GetDelegate) {
+        final newRouteInformationProvider = GetRouteInformationProvider(
+          delegate,
+          initialRouteInformation: RouteInformation(
+            uri: Uri.parse(
+              WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+            ),
+          ),
+        );
+
+        config = config.copyWith(
+          routeInformationProvider: newRouteInformationProvider,
         );
       }
     }
@@ -473,12 +515,40 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     }
   }
 
+  /// The last locale this state applied automatically from the device.
+  ///
+  /// Used by [didChangeLocales] to distinguish a device-derived locale from
+  /// one that was chosen explicitly (via `GetMaterialApp(locale:)` or
+  /// `Get.updateLocale`), so system locale changes never clobber an explicit
+  /// in-app language selection.
+  Locale? _appliedDeviceLocale;
+
+  /// Whether the app locale was chosen explicitly through `Get.updateLocale`.
+  ///
+  /// Once set, [didChangeLocales] stops following the device locale, even if
+  /// the explicitly chosen locale happens to be identical to the last locale
+  /// that was auto-applied from the device. Automatic device-locale adoption
+  /// never sets this flag.
+  bool localeSetExplicitly = false;
+
   @override
   void didChangeLocales(List<Locale>? locales) {
     Get.asap(() {
-      final locale = Get.deviceLocale;
-      if (locale != null) {
-        Get.updateLocale(locale);
+      final deviceLocale = Get.deviceLocale;
+      if (deviceLocale == null) {
+        return;
+      }
+      final appLocale = Get.locale;
+      final followsDeviceLocale =
+          !localeSetExplicitly &&
+          config.locale == null &&
+          (appLocale == null || appLocale == _appliedDeviceLocale);
+      if (followsDeviceLocale) {
+        _appliedDeviceLocale = deviceLocale;
+        // Apply the device locale without going through Get.updateLocale,
+        // so automatic adoption is never recorded as an explicit choice.
+        Get.locale = deviceLocale;
+        Get.forceAppUpdate();
       }
     });
   }
@@ -513,17 +583,26 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     });
   }
 
-  late final GlobalKey<NavigatorState> _fallbackKey =
+  /// Shared navigator key handed out whenever no explicit key is available.
+  ///
+  /// It is static so that `Get.key` returns the same instance before and
+  /// after [GetRoot] is mounted, which makes
+  /// `GetMaterialApp(navigatorKey: Get.key)` safe to write.
+  static final GlobalKey<NavigatorState> _fallbackKey =
       GlobalKey<NavigatorState>();
 
   GlobalKey<NavigatorState> get key {
-    if (config.routerConfig != null) {
-      return config.navigatorKey ?? _fallbackKey;
+    final currentConfig = _config;
+    if (currentConfig == null) {
+      return _fallbackKey;
     }
-    if (config.routerDelegate == null) {
-      return config.navigatorKey ?? _fallbackKey;
+    if (currentConfig.routerConfig != null) {
+      return currentConfig.navigatorKey ?? _fallbackKey;
     }
-    return config.navigatorKey ?? rootDelegate.navigatorKey;
+    if (currentConfig.routerDelegate == null) {
+      return currentConfig.navigatorKey ?? _fallbackKey;
+    }
+    return currentConfig.navigatorKey ?? rootDelegate.navigatorKey;
   }
 
   GetDelegate get rootDelegate => config.routerDelegate as GetDelegate;

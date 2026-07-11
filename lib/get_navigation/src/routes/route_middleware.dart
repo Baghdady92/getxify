@@ -50,6 +50,10 @@ abstract class GetMiddleware {
   ///
   /// if this returns null, the navigation is stopped,
   /// and no new routes are pushed.
+  ///
+  /// The incoming route's arguments are available through [route.args]
+  /// and can be forwarded to the redirect target with
+  /// `RouteDecoder.fromRoute(target, arguments: route.args)`.
   /// {@tool snippet}
   /// ```dart
   /// GetNavConfig? redirect(GetNavConfig route) {
@@ -174,7 +178,7 @@ class PageRedirect {
     BuildContext context,
   ) {
     while (needRecheck(context)) {}
-    final r = (isUnknown ? unk : rou)!;
+    final r = isUnknown ? unk ?? context.delegate.notFoundRoute : rou;
 
     return GetPageRoute<T>(
       page: r.page,
@@ -183,7 +187,7 @@ class PageRedirect {
       title: r.title,
       maintainState: r.maintainState,
       routeName: r.name,
-      settings: r,
+      settings: rou,
       curve: r.curve,
       showCupertinoParallax: r.showCupertinoParallax,
       gestureWidth: r.gestureWidth,

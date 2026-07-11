@@ -3,7 +3,7 @@ part of '../rx_types.dart';
 /// Create a set similar to `Set<T>` but reactive.
 class RxSet<E> extends GetListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
-  RxSet([super.initial = const {}]);
+  RxSet([Set<E>? initial]) : super(initial ?? <E>{});
 
   factory RxSet.from(Iterable elements) {
     return RxSet(Set.from(elements));

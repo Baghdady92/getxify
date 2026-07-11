@@ -8,9 +8,9 @@ class RouteDecoder {
   final List<GetPage> currentTreeBranch;
   final PageSettings? pageSettings;
 
-  factory RouteDecoder.fromRoute(String location) {
+  factory RouteDecoder.fromRoute(String location, {Object? arguments}) {
     var uri = Uri.parse(location);
-    final args = PageSettings(uri);
+    final args = PageSettings(uri, arguments);
     final decoder = (Get.rootController.rootDelegate).matchRoute(
       location,
       arguments: args,
@@ -107,7 +107,7 @@ class ParseRouteTree {
         .toList();
 
     final params = Map<String, String>.from(uri.queryParameters);
-    if (treeBranch.isNotEmpty) {
+    if (treeBranch.isNotEmpty && treeBranch.last.key == cumulativePaths.last) {
       //route is found, do further parsing to get nested query params
       final lastRoute = treeBranch.last;
       final parsedParams = _parseParams(name, lastRoute.value.path);
@@ -135,7 +135,7 @@ class ParseRouteTree {
     arguments?.params.addAll(params);
 
     //route not found
-    return RouteDecoder(treeBranch.map((e) => e.value).toList(), arguments);
+    return RouteDecoder([], arguments);
   }
 
   void addRoutes<T>(List<GetPage<T>> getPages) {

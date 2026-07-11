@@ -49,7 +49,10 @@ class SnackbarController {
   Future<void> get future => _transitionCompleter.future;
 
   /// Close the snackbar with animation
+  ///
+  /// Calling this on a snackbar that has already been closed is a no-op.
   Future<void> close({bool withAnimations = true}) async {
+    if (_transitionCompleter.isCompleted) return;
     if (!withAnimations) {
       _removeOverlay();
       return;
@@ -314,10 +317,7 @@ class SnackbarController {
   }
 
   void _removeEntry() {
-    assert(
-      !_transitionCompleter.isCompleted,
-      'Cannot remove entry from a disposed snackbar',
-    );
+    if (_transitionCompleter.isCompleted) return;
 
     _cancelTimer();
 
@@ -330,16 +330,16 @@ class SnackbarController {
   }
 
   void _removeOverlay() {
+    if (_transitionCompleter.isCompleted) return;
+
+    _cancelTimer();
+
     if (!_isTesting) {
       for (var element in _overlayEntries) {
         element.remove();
       }
     }
 
-    assert(
-      !_transitionCompleter.isCompleted,
-      'Cannot remove overlay from a disposed snackbar',
-    );
     _controller?.dispose();
     _overlayEntries.clear();
     _transitionCompleter.complete();

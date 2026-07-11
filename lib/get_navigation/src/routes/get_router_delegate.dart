@@ -57,6 +57,30 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
   List<RouteDecoder> get activePages => _activePages;
 
+  bool _pendingReplaceReport = false;
+
+  /// Whether the currently executing push-style navigation was delegated by
+  /// a replace-style method (e.g. [offUntil] calls [to] internally). While
+  /// true, ordinary push entrypoints must not clear [_pendingReplaceReport],
+  /// otherwise they would cancel the legitimately pending replace report.
+  bool _delegatedReplaceNavigation = false;
+
+  /// Returns whether the next route information report should overwrite the
+  /// current platform history entry instead of pushing a new one, and clears
+  /// the pending state.
+  ///
+  /// Replace-style navigations ([off], [offAll], [offAllNamed],
+  /// [offNamed], [offNamedUntil], [offUntil], [toNamedAndOffUntil] and
+  /// [backAndtoNamed]) mark the delegate so that
+  /// [GetRouteInformationProvider] reports the resulting URL update to the
+  /// engine with `replace: true`, keeping the browser history on Flutter Web
+  /// in sync with [activePages].
+  bool consumeReplaceReport() {
+    final result = _pendingReplaceReport;
+    _pendingReplaceReport = false;
+    return result;
+  }
+
   final _routeTree = ParseRouteTree(routes: []);
 
   List<GetPage> get registeredRoutes => _routeTree.routes;
@@ -349,6 +373,10 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     bool preventDuplicates = true,
     Map<String, String>? parameters,
   }) async {
+    // A push-style navigation must win over a replace-style navigation
+    // issued earlier in the same frame, since the router only reports the
+    // final configuration to the engine once per frame.
+    if (!_delegatedReplaceNavigation) _pendingReplaceReport = false;
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route != null) {
@@ -379,6 +407,11 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     PreventDuplicateHandlingMode preventDuplicateHandlingMode =
         PreventDuplicateHandlingMode.reorderRoutes,
   }) async {
+    // A push-style navigation must win over a replace-style navigation
+    // issued earlier in the same frame (see [toNamed]). [offUntil] delegates
+    // to this method after setting the pending replace report, in which case
+    // the flag must be preserved.
+    if (!_delegatedReplaceNavigation) _pendingReplaceReport = false;
     routeName ??= _cleanRouteName("/${page.runtimeType}");
 
     final getPage = GetPage<T>(
@@ -437,6 +470,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     );
 
     final args = _buildPageSettings(routeName, arguments);
+    _pendingReplaceReport = true;
     return _replace(args, route);
   }
 
@@ -476,6 +510,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
     final newPredicate = predicate ?? (route) => false;
 
+    _pendingReplaceReport = true;
     while (_activePages.length > 1 && !newPredicate(_activePages.last.route!)) {
       _popWithResult();
     }
@@ -495,6 +530,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
 
+    _pendingReplaceReport = true;
     while (_activePages.length > 1) {
       _activePages.removeLast();
     }
@@ -516,6 +552,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
     final newPredicate = predicate ?? (route) => false;
 
+    _pendingReplaceReport = true;
     while (_activePages.length > 1 && !newPredicate(_activePages.last.route!)) {
       _activePages.removeLast();
     }
@@ -533,6 +570,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route == null) return null;
+    _pendingReplaceReport = true;
     _popWithResult();
     return _push<T>(route);
   }
@@ -549,6 +587,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
     if (route == null) return null;
 
+    _pendingReplaceReport = true;
     while (_activePages.isNotEmpty && !predicate(_activePages.last.route!)) {
       _popWithResult();
     }
@@ -562,11 +601,18 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     bool Function(GetPage) predicate, [
     Object? arguments,
   ]) async {
+    _pendingReplaceReport = true;
     while (_activePages.isNotEmpty && !predicate(_activePages.last.route!)) {
       _popWithResult();
     }
 
-    return to<T>(page, arguments: arguments);
+    // [to] clears the pending replace report for ordinary pushes; mark this
+    // push as delegated so the flag set above survives. The guard only needs
+    // to cover the synchronous prefix of [to], which is where the clear runs.
+    _delegatedReplaceNavigation = true;
+    final result = to<T>(page, arguments: arguments);
+    _delegatedReplaceNavigation = false;
+    return result;
   }
 
   @override
@@ -574,8 +620,31 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     _activePages.remove(RouteDecoder.fromRoute(name));
   }
 
+  /// The topmost visual [Route] currently shown by this delegate's
+  /// navigator, or `null` if the navigator is not mounted yet.
+  Route<dynamic>? get _topVisualRoute {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return null;
+    Route<dynamic>? topRoute;
+    navigator.popUntil((route) {
+      topRoute = route;
+      return true;
+    });
+    return topRoute;
+  }
+
+  /// Whether the topmost visual route is pageless, that is a route pushed
+  /// imperatively on the navigator (e.g. a dialog, bottom sheet or a raw
+  /// [Navigator.push] route) that has no matching entry in [activePages].
+  bool get _topRouteIsPageless {
+    final route = _topVisualRoute;
+    return route != null && route.settings is! Page;
+  }
+
+  /// Whether [back] is able to pop a route, either a pageless route
+  /// sitting on top of the navigator or a previous entry in [activePages].
   bool get canBack {
-    return _activePages.length > 1;
+    return _activePages.length > 1 || _topRouteIsPageless;
   }
 
   void _checkIfCanBack() {
@@ -598,6 +667,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<R>(args);
     if (route == null) return null;
+    _pendingReplaceReport = true;
     _popWithResult<T>(result);
     return _push<R>(route);
   }
@@ -760,15 +830,47 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return decoder.route?.completer?.future as Future<T?>?;
   }
 
+  /// Handles a route reported by the platform (a deep link, or the browser
+  /// back/forward buttons on Flutter Web).
+  ///
+  /// When the reported route already exists in [activePages], the stack is
+  /// popped back to that entry so the pages above it are removed instead of
+  /// being duplicated or resurrected. Unknown routes keep the previous
+  /// behavior and are pushed on top of the stack, preserving deep links.
   @override
   Future<void> setNewRoutePath(RouteDecoder configuration) async {
     final page = configuration.route;
     if (page == null) {
       goToUnknownPage();
       return;
-    } else {
-      _push(configuration);
     }
+    final reportedName = configuration.pageSettings?.name;
+    var existingIndex = _activePages.lastIndexWhere(
+      (element) => element.pageSettings?.name == reportedName,
+    );
+    if (existingIndex == _activePages.length - 1 && _activePages.length > 1) {
+      // The reported route has the same name as the current top entry. When
+      // a lower duplicate exists (duplicates can be pushed with
+      // preventDuplicates disabled), the platform is navigating back to that
+      // duplicate, so pop to the highest matching entry strictly below the
+      // top. Without a lower duplicate this stays a no-op, as the platform
+      // is merely re-reporting the current route.
+      final lowerIndex = _activePages.lastIndexWhere(
+        (element) => element.pageSettings?.name == reportedName,
+        _activePages.length - 2,
+      );
+      if (lowerIndex >= 0) {
+        existingIndex = lowerIndex;
+      }
+    }
+    if (existingIndex >= 0) {
+      while (_activePages.length - 1 > existingIndex) {
+        _popWithResult();
+      }
+      notifyListeners();
+      return;
+    }
+    await _push(configuration);
   }
 
   @override
@@ -778,13 +880,13 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return route;
   }
 
+  /// Pops the topmost visual route through the navigator when it is a
+  /// pageless route (e.g. a dialog, bottom sheet or a route pushed
+  /// imperatively with [Navigator.push]), returning `true` if a pop
+  /// was handled and `false` when the topmost route is a page managed
+  /// by this delegate.
   Future<bool> handlePopupRoutes({Object? result}) async {
-    Route? currentRoute;
-    navigatorKey.currentState!.popUntil((route) {
-      currentRoute = route;
-      return true;
-    });
-    if (currentRoute is PopupRoute) {
+    if (_topRouteIsPageless) {
       return await navigatorKey.currentState!.maybePop(result);
     }
     return false;
@@ -805,15 +907,32 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return super.popRoute();
   }
 
+  /// Pops the topmost route with an optional [result].
+  ///
+  /// Pageless routes pushed imperatively on the navigator (e.g. dialogs,
+  /// bottom sheets or raw [Navigator.push] routes) are popped through the
+  /// navigator itself, so the pages managed by this delegate stay intact.
+  /// Otherwise the last entry of [activePages] is removed declaratively.
   @override
   void back<T>([T? result]) {
+    if (_topRouteIsPageless) {
+      navigatorKey.currentState?.pop<T>(result);
+      return;
+    }
     _checkIfCanBack();
     _popWithResult<T>(result);
     notifyListeners();
   }
 
   void _onDidRemoveVisualRoute(Page<dynamic> page) {
-    _popWithResult(null);
+    final index = _activePages.lastIndexWhere(
+      (e) => identical(e.route, page) || e.route == page,
+    );
+    // The page may already have been removed from the history (e.g. by a
+    // declarative [back] call whose rebuild has not been applied yet).
+    if (index < 0) return;
+    final completer = _activePages.removeAt(index).route?.completer;
+    if (completer?.isCompleted == false) completer!.complete(null);
     notifyListeners();
   }
 }

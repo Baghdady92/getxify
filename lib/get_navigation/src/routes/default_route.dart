@@ -158,8 +158,15 @@ class GetPageRoute<T> extends PageRoute<T>
   /// This method handles the dependency injection by running middleware
   /// and applying bindings before building the page widget. The result is
   /// cached to avoid rebuilding on every frame.
+  ///
+  /// Before running the bindings, this route reports itself as the current
+  /// route so that dependencies instantiated while building its subtree are
+  /// linked to it, even when multiple routes are pushed within the same
+  /// frame.
   Widget _getChild() {
     if (_child != null) return _child!;
+
+    RouterReportManager.instance.reportCurrentRoute(this);
 
     final localBinds = [...?binds];
 

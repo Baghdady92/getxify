@@ -6,6 +6,7 @@ export 'get_information_parser.dart';
 export 'get_navigation_interface.dart';
 export 'get_navigator.dart';
 export 'get_route.dart';
+export 'get_route_information_provider.dart';
 export 'get_router_delegate.dart';
 export 'get_transition_mixin.dart';
 export 'modules.dart';

@@ -43,67 +43,56 @@ extension LocalesIntl on GetInterface {
 }
 
 extension Trans on String {
-  // Checks whether the language code and country code are present, and
-  // whether the key is also present.
-  bool get _fullLocaleAndKey {
-    return Get.translations.containsKey(
-          "${Get.locale!.languageCode}_${Get.locale!.countryCode}",
-        ) &&
-        Get.translations["${Get.locale!.languageCode}_${Get.locale!.countryCode}"]!
-            .containsKey(this);
+  // Builds the candidate translation keys for [locale], from the most
+  // specific to the least specific:
+  // language_script_country, language_script, language_country, language.
+  static List<String> _candidateKeys(Locale locale) {
+    final language = locale.languageCode;
+    final script = locale.scriptCode;
+    final country = locale.countryCode;
+    return [
+      if (script != null && country != null) "${language}_${script}_$country",
+      if (script != null) "${language}_$script",
+      if (country != null) "${language}_$country",
+      language,
+    ];
   }
 
-  // Checks if there is a callback language in the absence of the specific
-  // country, and if it contains that key.
-  Map<String, String>? get _getSimilarLanguageTranslation {
-    final translationsWithNoCountry = Get.translations.map(
-      (key, value) => MapEntry(key.split("_").first, value),
-    );
-    final containsKey = translationsWithNoCountry.containsKey(
-      Get.locale!.languageCode.split("_").first,
-    );
-
-    if (!containsKey) {
-      return null;
+  // Looks this key up for [locale], trying each candidate key in order of
+  // specificity, then falling back to any other translation entry that
+  // shares the same language code. Returns null when nothing matches.
+  String? _resolveTranslationFor(Locale locale) {
+    for (final key in _candidateKeys(locale)) {
+      final translation = Get.translations[key];
+      if (translation != null && translation.containsKey(this)) {
+        return translation[this];
+      }
     }
-
-    return translationsWithNoCountry[Get.locale!.languageCode.split("_").first];
+    // Similar-language fallback in the absence of a more specific match.
+    final prefix = "${locale.languageCode}_";
+    for (final entry in Get.translations.entries) {
+      if (entry.key.startsWith(prefix) && entry.value.containsKey(this)) {
+        return entry.value[this];
+      }
+    }
+    return null;
   }
 
   String get tr {
-    // print('language');
-    // print(Get.locale!.languageCode);
-    // print('contains');
-    // print(Get.translations.containsKey(Get.locale!.languageCode));
-    // print(Get.translations.keys);
+    final locale = Get.locale;
     // Returns the key if locale is null.
-    if (Get.locale?.languageCode == null) return this;
+    if (locale == null) return this;
 
-    if (_fullLocaleAndKey) {
-      return Get
-          .translations["${Get.locale!.languageCode}_${Get.locale!.countryCode}"]![this]!;
-    }
-    final similarTranslation = _getSimilarLanguageTranslation;
-    if (similarTranslation != null && similarTranslation.containsKey(this)) {
-      return similarTranslation[this]!;
-      // If there is no corresponding language or corresponding key, return
-      // the key.
-    } else if (Get.fallbackLocale != null) {
-      final fallback = Get.fallbackLocale!;
-      final key = "${fallback.languageCode}_${fallback.countryCode}";
+    final translation = _resolveTranslationFor(locale);
+    if (translation != null) return translation;
 
-      if (Get.translations.containsKey(key) &&
-          Get.translations[key]!.containsKey(this)) {
-        return Get.translations[key]![this]!;
-      }
-      if (Get.translations.containsKey(fallback.languageCode) &&
-          Get.translations[fallback.languageCode]!.containsKey(this)) {
-        return Get.translations[fallback.languageCode]![this]!;
-      }
-      return this;
-    } else {
-      return this;
+    final fallback = Get.fallbackLocale;
+    if (fallback != null) {
+      return _resolveTranslationFor(fallback) ?? this;
     }
+    // If there is no corresponding language or corresponding key, return
+    // the key.
+    return this;
   }
 
   String trArgs([List<String> args = const []]) {

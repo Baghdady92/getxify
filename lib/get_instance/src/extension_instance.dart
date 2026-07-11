@@ -393,6 +393,11 @@ extension Inst on GetInterface {
   /// Deletes the Instance<[S]>, cleaning the memory and closes any open
   /// controllers (`DisposableInterface`).
   ///
+  /// If the registration was replaced while the previous route was still
+  /// disposing (the superseded factory is kept in `lateRemove`), only the
+  /// superseded instance is disposed and the fresh registration stays
+  /// alive, in which case this returns `false`.
+  ///
   /// - [tag] Optional "tag" used to register the Instance
   /// - [key] For internal usage, is the processed key used to register
   ///   the Instance. **don't use** it unless you know what you are doing.
@@ -409,15 +414,30 @@ extension Inst on GetInterface {
 
     if (dep == null) return false;
 
-    void cleanFactory(_InstanceBuilderFactory<Object?> factory) {
-      if (factory.lateRemove != null) {
-        cleanFactory(factory.lateRemove!);
+    if (dep.lateRemove != null) {
+      // The registration was replaced while a previous route was still
+      // disposing. Each pending disposal peels off the oldest superseded
+      // factory; the live registration is only removed once no superseded
+      // factory remains.
+      var parent = dep;
+      while (parent.lateRemove!.lateRemove != null) {
+        parent = parent.lateRemove!;
       }
-      final i = factory.dependency;
+      final stale = parent.lateRemove!;
+      final i = stale.dependency;
+      // Note: the `GetxServiceMixin` guard is intentionally NOT applied
+      // here. It exists to keep LIVE services alive across casual deletes;
+      // a superseded factory in `lateRemove` has already been replaced by
+      // a newer registration, so keeping it would only leak the stale
+      // instance and make the live one undeletable (the guard would fire
+      // on every subsequent delete before the chain is cleared).
       if (i is GetLifeCycleMixin) {
         i.onDelete();
         Get.log('"$newKey" onDelete() called');
       }
+      parent.lateRemove = null;
+      Get.log('"$newKey" deleted from memory');
+      return false;
     }
 
     if (dep.permanent && !force) {
@@ -428,18 +448,21 @@ extension Inst on GetInterface {
       );
       return false;
     }
-    final primaryDependency = dep.dependency;
+    final i = dep.dependency;
 
-    if (primaryDependency is GetxServiceMixin && !force) {
+    if (i is GetxServiceMixin && !force) {
       return false;
     }
 
-    cleanFactory(dep);
+    if (i is GetLifeCycleMixin) {
+      i.onDelete();
+      Get.log('"$newKey" onDelete() called');
+    }
 
     if (dep.fenix) {
       dep.dependency = null;
       dep.isInit = false;
-      dep.lateRemove = null;
+      dep.isDirty = false;
       return true;
     } else {
       _singl.remove(newKey);

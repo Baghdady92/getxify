@@ -20,6 +20,52 @@
 
 - **Fixed overlay closure logic** - Fixed a logical bug in `closeAllDialogsAndBottomSheets` where it incorrectly required *both* a dialog and a bottom sheet to be open simultaneously to close them (changed the condition check from `&&` to `||`).
 
+### Upstream Issue Fixes
+
+Fixes for 24 bugs reported on the upstream GetX issue tracker (jonataslaw/getx) that were confirmed to exist in this codebase, each covered by new regression tests.
+
+#### Navigation & Routing
+
+- **Fixed frozen previous-page animation during route transitions** - `GetPageRouteTransitionMixin.canTransitionTo` now accepts `MaterialRouteTransitionMixin` routes (mirroring Flutter's own implementation), so the outgoing page animates when a plain `MaterialPageRoute` is pushed over a `GetPageRoute` under `GetMaterialApp` (getx#3452)
+- **Fixed back navigation over imperatively pushed routes** - `Get.back()`, the system back button/gesture, and the iOS edge-swipe now pop pageless routes (e.g. `OpenContainer`, raw `Navigator.push`) through the Navigator instead of removing the underlying page from the router delegate's history, which previously tore down two screens at once (getx#3436)
+- **Fixed browser history on Flutter Web** - Replace-style navigations (`Get.off`, `Get.offAll`, `Get.offAllNamed`, etc.) are now reported to the browser as history replacements via the new default `GetRouteInformationProvider`, and browser back/forward to a route already on the stack pops back to it instead of resurrecting removed pages (getx#3372)
+- **Fixed `Get.closeOverlay()` popping page routes like `Get.back()`** - It now closes the actual overlay when called right after an awaited navigation, and the router history no longer removes the wrong route (getx#3316)
+- **Fixed `Get.close()` dropping its `result` and `id` arguments** - Awaited `Get.bottomSheet`/`Get.dialog` futures now complete with the provided result (getx#3319, getx#3387)
+- **`Get.close`, `Get.closeDialog` and `Get.closeBottomSheet` now close native overlays** - Dialogs and sheets opened with Flutter's own `showDialog`/`showModalBottomSheet` are recognized by inspecting the navigator's top route instead of relying solely on GetX routing flags (getx#3342)
+- **Overlay status getters no longer throw before routing is initialized** - `Get.isOverlaysOpen`, `Get.isDialogOpen`, `Get.isBottomSheetOpen` and `Get.isSnackbarOpen` return `false`/`null` instead of throwing "GetRoot is not part of the tree" (getx#3370)
+- **Made `SnackbarController.close()` idempotent** - Closing an already-dismissed snackbar no longer asserts "Cannot remove entry from a disposed snackbar", and `close(withAnimations: false)` cancels the pending duration timer (getx#3343)
+- **Fixed `unknownRoute` never being shown when a root `/` page is registered** - `ParseRouteTree.matchRoute` no longer treats a partial ancestor match as a full match (getx#3352)
+- **Fixed null-check crash in `PageRedirect.getPageToRoute`** - Navigating to an unmatched route with no `unknownRoute` configured now degrades gracefully to the delegate's not-found page instead of crashing (getx#3367)
+- **Middleware redirects can forward navigation arguments** - `RouteDecoder.fromRoute` accepts an optional `arguments` parameter so `redirectDelegate` targets can access the original `Get.arguments` (getx#3408)
+- **Fixed `Get.previousRoute` corruption after pops** - `GetObserver.didPop` no longer sets `Routing.previous` equal to `Routing.current`, which also broke the `preventDuplicates` check in `Get.off` (getx#3394)
+- **Fixed `Get.key` throwing "GetRoot is not part of the tree" before the app mounts** - `GetMaterialApp(navigatorKey: Get.key)` now works (getx#3323)
+- **Fixed theme changes being ignored when `GetMaterialApp` is rebuilt by a parent** - `GetRootState` now reconciles updated `ConfigData` (theme, darkTheme, themeMode, locale, ...) in `didUpdateWidget`, so wrapping `GetMaterialApp` in `Obx` works (getx#3371)
+- **Fixed device-locale changes overriding an explicitly set app locale** - `didChangeLocales` only follows the device locale when the app never set one via `GetMaterialApp(locale:)` or `Get.updateLocale` (getx#3357)
+- **Added `scrollable` parameter to `Get.defaultDialog`** - Forwarded to `AlertDialog.scrollable` to prevent overflow with tall content (getx#3330)
+
+#### Dependency Injection & Lifecycle
+
+- **Fixed deferred route disposal destroying freshly created controllers** - When a route is popped and the same controller is re-registered before the old route finishes disposing (rapid back-and-forth navigation, re-push during exit transition, or `Get.offAllNamed` to a route reusing the same controller type), only the superseded instance is disposed; the live controller stays registered and its `onInit` lifecycle is preserved (getx#3446, getx#3315, getx#3351)
+- **Fixed stale dirty flag on `fenix` registrations** - A `fenix` factory retained after deletion is no longer perpetually treated as stale, fixing missed `onClose` calls on resurrected controllers (getx#3292)
+- **Fixed controllers being linked to the wrong route** - When multiple pages are pushed within the same frame, each route's bindings and lazily-created controllers now link to their own route instead of the topmost one, so popping the top route no longer disposes them all (getx#3280)
+
+#### Reactive Types
+
+- **Fixed default-constructed `RxList`/`RxSet`/`RxMap` being unusable** - The default constructors previously backed the collection with an immutable `Never`-typed const literal, so the first `add()`/`[]=` threw a `TypeError`; they now create properly typed growable collections (getx#3411)
+
+#### Internationalization
+
+- **Fixed translation lookup ignoring `Locale.scriptCode`** - `tr` now resolves keys in specificity order (`lang_script_country` > `lang_script` > `lang_country` > `lang` > similar-language) for both `Get.locale` and `Get.fallbackLocale`, so `Locale('zh', scriptCode: 'Hant')` no longer resolves to `zh_CN` (getx#3380)
+
+#### Review Hardening
+
+Follow-up fixes found by an adversarial review of the changes above:
+
+- **Fixed browser back desync with duplicate same-name history entries** - A platform back reporting the current top route's name now pops to the lower duplicate instead of leaving the app stack out of sync with the browser history
+- **Fixed same-frame replace/push misreporting** - An ordinary `to`/`toNamed` push issued synchronously after a replace-style navigation in the same frame is now reported to the browser as a push instead of inheriting the replace semantics
+- **Fixed superseded `GetxService` leaking in the `lateRemove` chain** - A stale, already-replaced service now receives `onClose`/`onDelete` on a non-force delete and no longer makes the live registration permanently undeletable; the service-protection guard still applies to live instances
+- **`Get.updateLocale` now records explicit locale intent** - An OS locale change can no longer override a user-selected locale that happens to equal the previously auto-applied device locale
+
 ---
 
 ## 2.0.2
