@@ -242,6 +242,7 @@ class SnackbarController {
     return Builder(
       builder: (_) {
         return MouseRegion(
+          hitTestBehavior: HitTestBehavior.deferToChild,
           onEnter: (_) =>
               snackbar.onHover?.call(snackbar, SnackHoverState.entered),
           onExit: (_) =>
@@ -267,7 +268,7 @@ class SnackbarController {
 
   Widget _getDismissibleSnack(Widget child) {
     return Dismissible(
-      behavior: snackbar.hitTestBehavior ?? HitTestBehavior.opaque,
+      behavior: snackbar.hitTestBehavior ?? HitTestBehavior.deferToChild,
       direction: snackbar.dismissDirection ?? _getDefaultDismissDirection(),
       resizeDuration: null,
       confirmDismiss: (_) {

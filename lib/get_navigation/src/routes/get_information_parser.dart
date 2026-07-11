@@ -12,6 +12,15 @@ class GetInformationParser extends RouteInformationParser<RouteDecoder> {
 
   final String initialRoute;
 
+  /// Whether the first route information report has already been parsed.
+  ///
+  /// The platform reports its default location '/' on startup; following
+  /// [WidgetsApp.initialRoute] semantics, that first report resolves to
+  /// [initialRoute] even when a '/' page is registered. Later reports of
+  /// '/' (e.g. the browser navigating back to the root) are parsed
+  /// literally so a registered '/' page stays reachable.
+  bool _initialParseDone = false;
+
   GetInformationParser({required this.initialRoute}) {
     Get.log('GetInformationParser is created !');
   }
@@ -21,12 +30,17 @@ class GetInformationParser extends RouteInformationParser<RouteDecoder> {
   ) {
     final uri = routeInformation.uri;
     var location = uri.toString();
+    final isInitialParse = !_initialParseDone;
+    _initialParseDone = true;
     if (location == '/') {
-      //check if there is a corresponding page
-      //if not, relocate to initialRoute
-      if (!(Get.rootController.rootDelegate).registeredRoutes.any(
+      if (isInitialParse && initialRoute != '/') {
+        // The platform reported its default location: honor initialRoute
+        // even when a '/' page is registered.
+        location = initialRoute;
+      } else if (!(Get.rootController.rootDelegate).registeredRoutes.any(
         (element) => element.name == '/',
       )) {
+        // No corresponding '/' page: relocate to initialRoute.
         location = initialRoute;
       }
     } else if (location.isEmpty) {

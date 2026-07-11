@@ -99,6 +99,33 @@ extension Inst on GetInterface {
     return find<S>(tag: tag);
   }
 
+  /// Injects an instance of [S] built asynchronously by [builder] into the
+  /// dependency manager.
+  ///
+  /// Awaits [builder] and then registers the resulting instance exactly like
+  /// [put], so the regular lifecycle (`onInit`/`onReady`) runs on the ready
+  /// instance. Perform any asynchronous setup inside [builder] **before**
+  /// returning the instance; lifecycle callbacks such as `onInit` are
+  /// synchronous and are not awaited.
+  ///
+  /// ```dart
+  /// await Get.putAsync<StorageService>(() async {
+  ///   final service = StorageService();
+  ///   await service.init();
+  ///   return service;
+  /// });
+  /// ```
+  ///
+  /// - [tag] Optional tag to identify this specific instance.
+  /// - [permanent] If true, prevents the instance from being deleted by SmartManagement.
+  Future<S> putAsync<S>(
+    AsyncInstanceBuilderCallback<S> builder, {
+    String? tag,
+    bool permanent = false,
+  }) async {
+    return put<S>(await builder(), tag: tag, permanent: permanent);
+  }
+
   /// Creates a new Instance<S> lazily from the `<S>builder()` callback.
   ///
   /// The first time you call `Get.find()`, the `builder()` callback will create
@@ -355,17 +382,28 @@ extension Inst on GetInterface {
   /// If the existing instance is permanent, it will be forcefully deleted first before
   /// the new child is registered.
   ///
+  /// Registrations that [delete] intentionally keeps alive (a `fenix`
+  /// factory kept for resurrection, a [GetxService], or an entry whose
+  /// `lateRemove` disposal is still pending) are evicted outright, so the
+  /// new [child] always takes their place.
+  ///
   /// - [tag] Optional tag to identify the instance.
   void replace<P>(P child, {String? tag}) {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
     delete<P>(tag: tag, force: permanent);
+    _evictSurvivingRegistration(_getKey(P, tag));
     put(child, tag: tag, permanent: permanent);
   }
 
   /// Replaces an existing registered dependency of type [P] with a new lazy factory [builder].
   ///
   /// If the existing instance is permanent, it will be forcefully deleted first.
+  ///
+  /// Registrations that [delete] intentionally keeps alive (a `fenix`
+  /// factory kept for resurrection, a [GetxService], or an entry whose
+  /// `lateRemove` disposal is still pending) are evicted outright, so the
+  /// new [builder] always takes their place.
   ///
   /// - [tag] Optional tag to identify the instance.
   /// - [fenix] If true, the builder callback will persist in memory to recreate the instance if deleted.
@@ -378,13 +416,57 @@ extension Inst on GetInterface {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
     delete<P>(tag: tag, force: permanent);
+    _evictSurvivingRegistration(_getKey(P, tag));
     lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+  }
+
+  /// Removes a registration that survived [delete] so that a follow-up
+  /// [put]/[lazyPut] issued by [replace]/[lazyReplace] registers the new
+  /// builder instead of being ignored by `_insert`.
+  ///
+  /// [delete] keeps an entry registered when it is a `fenix` factory
+  /// (retained for resurrection), a live [GetxService], or when a
+  /// `lateRemove` chain is pending (in which case only the oldest
+  /// superseded factory was peeled off). Any instance in the surviving
+  /// entry that has not yet received `onDelete` gets it here; `onDelete`
+  /// is idempotent, so instances already disposed by [delete] are safe.
+  void _evictSurvivingRegistration(String key) {
+    final dep = _singl[key];
+    if (dep == null) return;
+
+    var stale = dep.lateRemove;
+    while (stale != null) {
+      final i = stale.dependency;
+      if (i is GetLifeCycleMixin) {
+        i.onDelete();
+        Get.log('"$key" onDelete() called');
+      }
+      stale = stale.lateRemove;
+    }
+
+    final i = dep.dependency;
+    if (i is GetLifeCycleMixin) {
+      i.onDelete();
+      Get.log('"$key" onDelete() called');
+    }
+
+    _singl.remove(key);
+    Get.log('"$key" deleted from memory');
   }
 
   /// Generates the key based on [type] (and optionally a [name])
   /// to register an Instance Builder in the hashmap.
+  ///
+  /// A nullable [type] is normalized to its non-nullable form, so a
+  /// registration whose generic argument was inferred as nullable (e.g.
+  /// `MyController? c = Get.put(MyController());`) shares the same key
+  /// as `Get.put<MyController>(...)` and `Get.find<MyController>()`.
   String _getKey(Type type, String? name) {
-    return name == null ? type.toString() : type.toString() + name;
+    var typeName = type.toString();
+    if (typeName.endsWith('?')) {
+      typeName = typeName.substring(0, typeName.length - 1);
+    }
+    return name == null ? typeName : typeName + name;
   }
 
   /// Delete registered Class Instance [S] (or [tag]) and, closes any open
@@ -489,17 +571,46 @@ extension Inst on GetInterface {
   /// Reloads all registered instances by clearing their active dependency objects
   /// and resetting their initialization states.
   ///
-  /// - [force] If true, reloads even the instances marked as `permanent`.
+  /// Each initialized instance receives its `onDelete` lifecycle (which
+  /// triggers `onClose`) before being cleared, mirroring [reload].
+  /// Instances marked as `permanent` and [GetxService]s are skipped
+  /// unless [force] is true.
+  ///
+  /// - [force] If true, reloads even the instances marked as `permanent`
+  ///   and `GetxService`s.
   void reloadAll({bool force = false}) {
-    _singl.forEach((key, value) {
+    // Iterate over a snapshot of the keys (like [deleteAll]): the `onDelete`
+    // lifecycle below runs user `onClose` callbacks, which may mutate the
+    // registry (e.g. `Get.delete<Other>()`, `Get.put`) and would otherwise
+    // throw a ConcurrentModificationError mid-iteration.
+    final keys = _singl.keys.toList();
+    for (final key in keys) {
+      final value = _singl[key];
+      if (value == null) {
+        // Removed by a lifecycle callback of a previously reloaded instance.
+        continue;
+      }
       if (value.permanent && !force) {
         Get.log('Instance "$key" is permanent. Skipping reload');
-      } else {
-        value.dependency = null;
-        value.isInit = false;
-        Get.log('Instance "$key" was reloaded.');
+        continue;
       }
-    });
+
+      final i = value.dependency;
+
+      if (i is GetxServiceMixin && !force) {
+        Get.log('Instance "$key" is a GetxService. Skipping reload');
+        continue;
+      }
+
+      if (i is GetLifeCycleMixin) {
+        i.onDelete();
+        Get.log('"$key" onDelete() called');
+      }
+
+      value.dependency = null;
+      value.isInit = false;
+      Get.log('Instance "$key" was reloaded.');
+    }
   }
 
   /// Reloads/restarts a specific registered dependency of type [S].

@@ -21,7 +21,10 @@ class GetSnackBar extends StatefulWidget {
 
   /// Defines how the snack bar area, including margin, will behave during hit testing.
   ///
-  /// If this property is null and [margin] is not null, then [HitTestBehavior.deferToChild] is used by default.
+  /// If this property is null, [HitTestBehavior.deferToChild] is used by
+  /// default: only the visible snackbar responds to pointer events, while
+  /// taps inside [margin] or beside a width-constrained snackbar
+  /// (see [maxWidth]) pass through to the widgets underneath.
   ///
   /// Please refer to [HitTestBehavior] for a detailed explanation of every behavior.
   final HitTestBehavior? hitTestBehavior;

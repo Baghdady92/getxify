@@ -108,13 +108,45 @@ mixin RxObjectMixin<T> on GetListenable<T> {
     return subscription;
   }
 
+  /// Subscriptions created by [bindStream], cancelled when this Rx is closed.
+  final List<StreamSubscription<T>> _subscriptions = <StreamSubscription<T>>[];
+
   /// Binds an existing `Stream<T>` to this `Rx<T>` to keep the values in sync.
   /// You can bind multiple sources to update the value.
-  /// Closing the subscription will happen automatically when the observer
-  /// Widget (`GetX` or `Obx`) gets unmounted from the Widget tree.
-  void bindStream(Stream<T> stream) {
+  ///
+  /// Set [cancelPrevious] to `true` to cancel any subscriptions created by
+  /// earlier [bindStream] calls before binding the new [stream]. This is
+  /// useful when rebinding to a fresh source (e.g. re-entering a page) so
+  /// stale streams stop overwriting the value.
+  ///
+  /// Returns the [StreamSubscription], so callers can pause or cancel the
+  /// binding manually. All active subscriptions are cancelled automatically
+  /// when this Rx is closed; when [bindStream] is called during an observer
+  /// (`GetX` or `Obx`) build, the subscription is also cancelled when that
+  /// Widget gets unmounted from the Widget tree.
+  StreamSubscription<T> bindStream(
+    Stream<T> stream, {
+    bool cancelPrevious = false,
+  }) {
+    if (cancelPrevious) {
+      for (final subscription in _subscriptions) {
+        subscription.cancel();
+      }
+      _subscriptions.clear();
+    }
     final sub = stream.listen((va) => value = va);
+    _subscriptions.add(sub);
     reportAdd(sub.cancel);
+    return sub;
+  }
+
+  @override
+  void close() {
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    _subscriptions.clear();
+    super.close();
   }
 }
 

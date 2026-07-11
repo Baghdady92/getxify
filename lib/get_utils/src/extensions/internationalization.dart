@@ -109,6 +109,24 @@ extension Trans on String {
     return i == 1 ? trArgs(args) : pluralKey!.trArgs(args);
   }
 
+  /// Translates this key with [tr], then replaces every `@name` placeholder
+  /// in the result with the value mapped to `name` in [params].
+  ///
+  /// Placeholders are matched by the string's *logical* character order: the
+  /// `@` must come immediately before the parameter name (`'@correctAnswers'`),
+  /// regardless of the script or text direction of the surrounding text.
+  ///
+  /// Note for right-to-left translations (Arabic, Hebrew, etc.): inside an
+  /// RTL string, a correctly written `@name` placeholder is *displayed* with
+  /// the `@` on the visual right of the name. Do not "fix" this by moving the
+  /// `@` after the name (`'correctAnswers@'`) — that stores the `@` on the
+  /// wrong logical side, so the placeholder will never be substituted.
+  ///
+  /// ```dart
+  /// // en_US: 'You answered @correct of @total questions!'
+  /// // he_IL: 'ענית נכון על @correct מתוך @total שאלות!'
+  /// 'score'.trParams({'correct': '9', 'total': '10'});
+  /// ```
   String trParams([Map<String, String> params = const {}]) {
     var trans = tr;
     if (params.isNotEmpty) {

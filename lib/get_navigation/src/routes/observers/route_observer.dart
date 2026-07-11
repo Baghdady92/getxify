@@ -57,12 +57,19 @@ class GetObserver extends NavigatorObserver {
     // previous route instead of 'route' because this is
     // a 'inverse push'
     _routeSend?.update((value) {
-      // Only PageRoute is allowed to change current value
-      if (previousRoute is PageRoute) {
-        value.current = _extractRouteName(previousRoute) ?? '';
-        value.previous = currentRoute.name ?? '';
-      } else if (value.previous.isNotEmpty) {
-        value.current = value.previous;
+      // Only popping a page route may change current/previous values.
+      // Overlay pops (dialogs/bottom sheets) leave them untouched so that
+      // synthetic overlay names never leak into the routing history.
+      if (route is PageRoute) {
+        if (previousRoute is PageRoute) {
+          value.current = _extractRouteName(previousRoute) ?? '';
+          value.previous = currentRoute.name ?? '';
+        } else if (value.previous.isNotEmpty) {
+          // The revealed route is pageless (e.g. a bottom sheet under the
+          // popped page), so fall back to the last known page below it.
+          value.current = value.previous;
+          value.previous = currentRoute.name ?? '';
+        }
       }
 
       value.args = previousRoute?.settings.arguments;
@@ -89,12 +96,19 @@ class GetObserver extends NavigatorObserver {
 
     RouterReportManager.instance.reportCurrentRoute(route);
     _routeSend?.update((value) {
+      // Only page routes are allowed to change current/previous values.
+      // Overlay pushes (dialogs/bottom sheets) leave them untouched so that
+      // synthetic overlay names never leak into the routing history.
       if (route is PageRoute) {
+        final previousRouteName = previousRoute is PageRoute
+            ? _extractRouteName(previousRoute)
+            : previousRoute != null && value.current.isNotEmpty
+            ? value.current
+            : null;
+        if (previousRouteName != null) {
+          value.previous = previousRouteName;
+        }
         value.current = newRoute.name ?? '';
-      }
-      final previousRouteName = _extractRouteName(previousRoute);
-      if (previousRouteName != null) {
-        value.previous = previousRouteName;
       }
 
       value.args = route.settings.arguments;

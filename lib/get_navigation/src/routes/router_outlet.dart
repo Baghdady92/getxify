@@ -76,6 +76,22 @@ class RouterOutletState<TDelegate extends RouterDelegate<T>, T extends Object>
 }
 
 class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
+  /// Creates a nested navigator that renders the tree-branch pages below
+  /// [anchorRoute].
+  ///
+  /// The pages are taken from the deepest navigation history entry whose
+  /// branch contains the anchor (so the outlet keeps its current child
+  /// while an unrelated route is on top of the history), truncated after
+  /// the first page that itself anchors a deeper outlet (its descendants
+  /// are hosted by that outlet) and excluding pages marked with
+  /// [GetPage.participatesInRootNavigator], which the root navigator
+  /// renders. [filterPages] runs last and can further reduce the picked
+  /// pages.
+  ///
+  /// When the picked set is empty the page matching [initialRoute] is
+  /// rendered instead, resolved through the synchronous middleware surface
+  /// ([GetMiddleware.redirect] and synchronous
+  /// [GetMiddleware.redirectDelegate] results).
   GetRouterOutlet({
     Key? key,
     String? anchorRoute,
@@ -91,9 +107,24 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
              // jump the ancestor path
              final length = Uri.parse(initialRoute).pathSegments.length;
 
-             return config.currentTreeBranch.skip(length).take(length).toList();
+             ret = config.currentTreeBranch.skip(length).take(length);
+           } else {
+             final branch = _anchorBranch(
+               config,
+               anchorRoute,
+               delegate ?? Get.rootController.rootDelegate,
+             );
+             ret = _stopAfterNestedOutletAnchor(
+               branch.pickAfterRoute(anchorRoute),
+               anchorRoute,
+             );
            }
-           ret = config.currentTreeBranch.pickAfterRoute(anchorRoute);
+           // Pages participating in the root navigator are rendered by
+           // [GetDelegate.build]; rendering them here as well would mount
+           // them twice.
+           ret = ret.takeWhile(
+             (page) => page.participatesInRootNavigator != true,
+           );
            if (filterPages != null) {
              ret = filterPages(ret);
            }
@@ -101,10 +132,59 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
          },
          key: key,
          emptyPage: (delegate) =>
-             delegate.matchRoute(initialRoute).route ?? delegate.notFoundRoute,
-         navigatorKey: Get.nestedKey(anchorRoute)?.navigatorKey,
+             _resolveInitialPage(delegate, initialRoute) ??
+             delegate.notFoundRoute,
+         navigatorKey: anchorRoute == null
+             ? null
+             : Get.nestedKey(anchorRoute)?.navigatorKey,
          delegate: delegate,
        );
+
+  /// Resolves the page rendered for an outlet's `initialRoute` through the
+  /// synchronously-resolvable part of the middleware pipeline.
+  ///
+  /// The router delegate never navigates to an outlet's `initialRoute` (the
+  /// page is rendered directly whenever the outlet picks no pages), so
+  /// [GetMiddleware.redirectDelegate] would otherwise never run for it.
+  /// Middlewares run in ascending [GetMiddleware.priority] order, mirroring
+  /// the delegate's own pipeline. Because this resolution happens during
+  /// build, asynchronous [GetMiddleware.redirectDelegate] results cannot be
+  /// awaited and keep the original target; synchronous results — including
+  /// the default bridge to [GetMiddleware.redirect] — are honored. A
+  /// middleware stopping the navigation (returning `null`) resolves to
+  /// `null`, which callers degrade to [GetDelegate.notFoundRoute].
+  static GetPage? _resolveInitialPage(
+    GetDelegate delegate,
+    String initialRoute,
+  ) {
+    var decoder = delegate.matchRoute(
+      initialRoute,
+      arguments: PageSettings(Uri.parse(initialRoute)),
+    );
+    final visited = <String>{};
+    while (true) {
+      final page = decoder.route;
+      if (page == null) return null;
+      // A middleware redirect cycle can never settle; degrade to the
+      // not-found page instead of looping forever during build.
+      if (!visited.add(page.name)) return null;
+      final middlewares = List.of(page.middlewares)
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+      RouteDecoder? next;
+      for (final middleware in middlewares) {
+        final resolved = middleware.redirectDelegate(decoder);
+        if (resolved is Future) continue;
+        if (resolved == null) return null;
+        if (resolved.pageSettings?.name != decoder.pageSettings?.name) {
+          next = resolved;
+          break;
+        }
+      }
+      if (next == null) return page;
+      decoder = next;
+    }
+  }
+
   GetRouterOutlet.pickPages({
     super.key,
     Widget Function(GetDelegate delegate)? emptyWidget,
@@ -125,11 +205,13 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
              return InheritedNavigator(
                navigatorKey:
                    navigatorKey ?? Get.rootController.rootDelegate.navigatorKey,
-               child: GetNavigator(
-                 restorationScopeId: restorationScopeId,
-                 onDidRemovePage: onDidRemovePage,
-                 pages: pageRes.toList(),
-                 key: navigatorKey,
+               child: _OutletHeroControllerScope(
+                 child: GetNavigator(
+                   restorationScopeId: restorationScopeId,
+                   onDidRemovePage: onDidRemovePage ?? _ignoreDidRemovePage,
+                   pages: pageRes.toList(),
+                   key: navigatorKey,
+                 ),
                ),
              );
            }
@@ -150,6 +232,92 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
                  ? Get.nestedKey(route)
                  : Get.rootController.rootDelegate),
        );
+}
+
+/// Default `onDidRemovePage` handler for nested outlet navigators.
+///
+/// The Navigator pages API requires a removal callback; a nested outlet's
+/// page stack is derived declaratively from the router delegate's history,
+/// so a page leaving the picked stack needs no bookkeeping here — the
+/// delegate already reflects the change that caused the removal.
+void _ignoreDidRemovePage(Page<dynamic> page) {}
+
+/// The tree branch an outlet anchored at [anchorRoute] should render from.
+///
+/// Prefers the deepest entry of [delegate]'s navigation history whose
+/// branch contains the anchor, so that a nested outlet keeps showing its
+/// current child while an unrelated route (e.g. a sibling top-level page)
+/// sits on top of the history. Falls back to [config]'s branch when no
+/// history entry contains the anchor.
+List<GetPage> _anchorBranch(
+  RouteDecoder config,
+  String anchorRoute,
+  GetDelegate delegate,
+) {
+  final activePages = delegate.activePages;
+  for (var i = activePages.length - 1; i >= 0; i--) {
+    final branch = activePages[i].currentTreeBranch;
+    if (branch.any((page) => page.name == anchorRoute)) {
+      return branch;
+    }
+  }
+  return config.currentTreeBranch;
+}
+
+/// Truncates [pages] after the first page that itself anchors a deeper
+/// nested outlet (a registered nested navigation key), keeping that page
+/// but dropping its descendants.
+///
+/// Descendant pages are hosted by the deeper outlet's navigator; leaking
+/// them into the outer outlet as well would stack them over the deeper
+/// outlet's host page and render them twice.
+Iterable<GetPage> _stopAfterNestedOutletAnchor(
+  Iterable<GetPage> pages,
+  String anchorRoute,
+) {
+  final result = <GetPage>[];
+  for (final page in pages) {
+    result.add(page);
+    if (page.name != anchorRoute &&
+        Get.rootController.keys.containsKey(page.name)) {
+      break;
+    }
+  }
+  return result;
+}
+
+/// Hosts a persistent [HeroController] scoped to a nested outlet navigator.
+///
+/// `MaterialApp.router`/`CupertinoApp.router` install a single
+/// [HeroControllerScope] above the root navigator. Without an inner scope,
+/// every nested outlet navigator would attach that same controller and
+/// Flutter reports "A HeroController can not be shared by multiple
+/// Navigators". Owning the controller in a [State] keeps hero flight state
+/// alive across outlet rebuilds.
+class _OutletHeroControllerScope extends StatefulWidget {
+  const _OutletHeroControllerScope({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_OutletHeroControllerScope> createState() =>
+      _OutletHeroControllerScopeState();
+}
+
+class _OutletHeroControllerScopeState
+    extends State<_OutletHeroControllerScope> {
+  final HeroController _controller = MaterialApp.createMaterialHeroController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HeroControllerScope(controller: _controller, child: widget.child);
+  }
 }
 
 class InheritedNavigator extends InheritedWidget {

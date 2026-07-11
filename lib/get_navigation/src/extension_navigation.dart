@@ -31,6 +31,64 @@ bool _isDialogRoute(Route<dynamic>? route) =>
 bool _isBottomSheetRoute(Route<dynamic>? route) =>
     route is GetModalBottomSheetRoute || route is ModalBottomSheetRoute;
 
+/// A [GetModalBottomSheetRoute] that guarantees a [MaterialLocalizations]
+/// ancestor for the sheet content.
+///
+/// Apps that don't install the material delegates (e.g. [GetCupertinoApp])
+/// have no [MaterialLocalizations] in their tree, which made
+/// `Get.bottomSheet` throw. When the localizations are missing, the sheet
+/// subtree is wrapped with [DefaultMaterialLocalizations]; under
+/// [GetMaterialApp] the inherited localizations are found and the route
+/// behaves exactly as before.
+class _MaterialLocalizedBottomSheetRoute<T> extends GetModalBottomSheetRoute<T> {
+  _MaterialLocalizedBottomSheetRoute({
+    super.builder,
+    super.theme,
+    super.barrierLabel,
+    super.backgroundColor,
+    super.elevation,
+    super.shape,
+    super.removeTop,
+    super.clipBehavior,
+    super.modalBarrierColor,
+    super.isDismissible,
+    super.enableDrag,
+    super.showDragHandle,
+    super.dragHandleColor,
+    super.dragHandleSize,
+    super.shadowColor,
+    super.surfaceTintColor,
+    required super.isScrollControlled,
+    super.settings,
+    super.enterBottomSheetDuration,
+    super.exitBottomSheetDuration,
+    super.curve,
+  });
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    final page = super.buildPage(context, animation, secondaryAnimation);
+    final hasMaterialLocalizations =
+        Localizations.of<MaterialLocalizations>(
+          context,
+          MaterialLocalizations,
+        ) !=
+        null;
+    if (hasMaterialLocalizations) {
+      return page;
+    }
+    return Localizations.override(
+      context: context,
+      delegates: const [DefaultMaterialLocalizations.delegate],
+      child: page,
+    );
+  }
+}
+
 extension ExtensionBottomSheet on GetInterface {
   Future<T?> bottomSheet<T>(
     Widget bottomsheet, {
@@ -56,14 +114,17 @@ extension ExtensionBottomSheet on GetInterface {
     Color? surfaceTintColor,
   }) {
     return Navigator.of(overlayContext!, rootNavigator: useRootNavigator).push(
-      GetModalBottomSheetRoute<T>(
+      _MaterialLocalizedBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
         theme: Theme.of(key.currentContext!),
         isScrollControlled: isScrollControlled,
 
-        barrierLabel: MaterialLocalizations.of(
-          key.currentContext!,
-        ).modalBarrierDismissLabel,
+        barrierLabel:
+            Localizations.of<MaterialLocalizations>(
+              key.currentContext!,
+              MaterialLocalizations,
+            )?.modalBarrierDismissLabel ??
+            const DefaultMaterialLocalizations().modalBarrierDismissLabel,
 
         backgroundColor: backgroundColor ?? Colors.transparent,
         elevation: elevation,
@@ -185,6 +246,14 @@ extension ExtensionDialog on GetInterface {
   }
 
   /// Custom UI Dialog.
+  ///
+  /// Besides the cancel and confirm buttons, a third action can be added:
+  /// pass [custom] to render your own action widget, or use [textCustom]
+  /// and/or [onCustom] to render a default-styled button labeled
+  /// [textCustom] (defaults to "Custom") that invokes [onCustom] when
+  /// tapped. Like the confirm button, the custom button does not close
+  /// the dialog by itself; close it from your callback if desired.
+  /// For custom body content use [content] instead.
   Future<T?> defaultDialog<T>({
     String title = "Alert",
     EdgeInsetsGeometry? titlePadding,
@@ -218,6 +287,7 @@ extension ExtensionDialog on GetInterface {
   }) {
     var leanCancel = onCancel != null || textCancel != null;
     var leanConfirm = onConfirm != null || textConfirm != null;
+    var leanCustom = onCustom != null || textCustom != null;
     actions ??= [];
 
     if (cancel != null) {
@@ -276,6 +346,32 @@ extension ExtensionDialog on GetInterface {
             ),
             onPressed: () {
               onConfirm?.call();
+            },
+          ),
+        );
+      }
+    }
+    if (custom != null) {
+      actions.add(custom);
+    } else {
+      if (leanCustom) {
+        actions.add(
+          TextButton(
+            style: TextButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              backgroundColor: buttonColor ?? theme.colorScheme.secondary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radius),
+              ),
+            ),
+            child: Text(
+              textCustom ?? "Custom",
+              style: TextStyle(
+                color: confirmTextColor ?? theme.colorScheme.surface,
+              ),
+            ),
+            onPressed: () {
+              onCustom?.call();
             },
           ),
         );
@@ -838,6 +934,12 @@ extension GetNavigationExt on GetInterface {
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
   ///
+  /// When the topmost route handles the pop internally — for example a
+  /// [Scaffold] with an open drawer, or a persistent bottom sheet, both of
+  /// which register a [LocalHistoryEntry] on the enclosing route — that
+  /// entry is consumed (e.g. the drawer closes) and the page itself stays,
+  /// matching `Navigator.pop` semantics.
+  ///
   /// It has the advantage of not needing context, so you can call
   /// from your business logic.
   void back<T>({T? result, bool canPop = true, int times = 1, String? id}) {
@@ -849,6 +951,9 @@ extension GetNavigationExt on GetInterface {
       var count = 0;
       return searchDelegate(id).backUntil((route) => count++ == times);
     } else {
+      if (_topRoute(id: id)?.willHandlePopInternally == true) {
+        return searchDelegate(id).navigatorKey.currentState?.pop<T>(result);
+      }
       if (canPop) {
         if (searchDelegate(id).canBack == true) {
           return searchDelegate(id).back<T>(result);
@@ -982,6 +1087,11 @@ extension GetNavigationExt on GetInterface {
   /// Dialogs and bottom sheets are closed returning [result] to the
   /// `Future` returned when they were opened.
   ///
+  /// If the topmost route handles the pop internally — for example a
+  /// [Scaffold] with an open drawer, which registers a [LocalHistoryEntry]
+  /// on the enclosing route — that entry is consumed first (e.g. the
+  /// drawer closes) while the page itself stays.
+  ///
   /// [id] is for when you are using nested navigation,
   /// as explained in documentation
   void close<T extends Object>({
@@ -992,6 +1102,10 @@ extension GetNavigationExt on GetInterface {
     String? id,
     T? result,
   }) {
+    if (_topRoute(id: id)?.willHandlePopInternally == true) {
+      searchDelegate(id).navigatorKey.currentState?.pop();
+    }
+
     void handleClose(
       bool closeCondition,
       void Function() closeAllFunction,
@@ -1362,6 +1476,13 @@ extension GetNavigationExt on GetInterface {
 }
 
 extension OverlayExt on GetInterface {
+  /// Shows a translucent barrier with a [loadingWidget] on top of the
+  /// current page while [asyncFunction] runs, then returns its result.
+  ///
+  /// The barrier and the loading widget are always removed when
+  /// [asyncFunction] completes, whether it returns a value or throws
+  /// (any thrown object, not only [Exception]s); errors are rethrown
+  /// to the caller.
   Future<T> showOverlay<T>({
     required Future<T> Function() asyncFunction,
     Color opacityColor = Colors.black,
@@ -1393,18 +1514,15 @@ extension OverlayExt on GetInterface {
     overlayState.insert(overlayEntryOpacity);
     overlayState.insert(overlayEntryLoader);
 
-    T data;
+    final T data;
 
     try {
       data = await asyncFunction();
-    } on Exception catch (_) {
+    } finally {
       overlayEntryLoader.remove();
       overlayEntryOpacity.remove();
-      rethrow;
     }
 
-    overlayEntryLoader.remove();
-    overlayEntryOpacity.remove();
     return data;
   }
 }

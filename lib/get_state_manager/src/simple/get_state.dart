@@ -169,22 +169,54 @@ abstract class Bind<T> extends StatelessWidget {
 
   static bool isPrepared<S>({String? tag}) => Get.isPrepared<S>(tag: tag);
 
-  static void replace<P>(P child, {String? tag}) {
-    final info = Get.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Get.put(child, tag: tag, permanent: permanent);
-  }
+  /// Replaces the registered instance of type [P] with a new [child]
+  /// instance.
+  ///
+  /// Delegates to [Get.replace], so registrations that a plain [delete]
+  /// keeps alive (a `fenix` factory, a [GetxService], or an entry with a
+  /// pending `lateRemove` disposal) are evicted and the new [child] always
+  /// takes their place.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  static void replace<P>(P child, {String? tag}) =>
+      Get.replace<P>(child, tag: tag);
 
+  /// Replaces the registered dependency of type [P] with a new lazy
+  /// factory [builder].
+  ///
+  /// Delegates to [Get.lazyReplace], so registrations that a plain
+  /// [delete] keeps alive (a `fenix` factory, a [GetxService], or an entry
+  /// with a pending `lateRemove` disposal) are evicted and the new
+  /// [builder] always takes their place.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  /// - [fenix] If true, the builder persists in memory to recreate the
+  ///   instance if deleted. Defaults to true when the replaced instance
+  ///   was permanent.
   static void lazyReplace<P>(
     InstanceBuilderCallback<P> builder, {
     String? tag,
     bool? fenix,
-  }) {
-    final info = Get.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Get.lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+  }) => Get.lazyReplace<P>(builder, tag: tag, fenix: fenix);
+
+  /// Injects an instance of [S] built asynchronously by [builder] into the
+  /// dependency manager, returning a [Bind] for the registered instance.
+  ///
+  /// Delegates to [Get.putAsync]: the [builder] future is awaited and the
+  /// resulting instance is registered like [put], so the regular lifecycle
+  /// (`onInit`/`onReady`) runs on the ready instance. Perform any
+  /// asynchronous setup inside [builder] **before** returning the instance.
+  ///
+  /// - [tag] Optional tag to identify this specific instance.
+  /// - [permanent] If true, prevents the instance from being deleted by
+  ///   SmartManagement.
+  static Future<Bind<S>> putAsync<S>(
+    AsyncInstanceBuilderCallback<S> builder, {
+    String? tag,
+    bool permanent = false,
+  }) async {
+    await Get.putAsync<S>(builder, tag: tag, permanent: permanent);
+    return _FactoryBind<S>(autoRemove: permanent, assignId: true, tag: tag);
   }
 
   factory Bind.builder({
@@ -392,8 +424,6 @@ class BindElement<T> extends InheritedElement {
   Object? _filter;
 
   void initState() {
-    widget.initState?.call(this);
-
     var isRegistered = Get.isRegistered<T>(tag: widget.tag);
 
     if (widget.global) {
@@ -428,6 +458,8 @@ class BindElement<T> extends InheritedElement {
       _isCreator = true;
       _needStart = true;
     }
+
+    widget.initState?.call(this);
   }
 
   /// Register to listen Controller's events.
@@ -460,6 +492,23 @@ class BindElement<T> extends InheritedElement {
       final stream = localController.stream.listen((_) => filter());
       _remove = () => stream.cancel();
     }
+
+    _updateTickerMode();
+  }
+
+  bool _isMounted = false;
+
+  /// Forwards this element's [TickerMode] to the controller when it uses
+  /// [GetSingleTickerProviderStateMixin] or [GetTickerProviderStateMixin],
+  /// so its tickers are muted while tickers are disabled in this subtree.
+  void _updateTickerMode() {
+    if (!_isMounted) return;
+    final localController = _controller;
+    if (localController is GetSingleTickerProviderStateMixin) {
+      localController.didChangeDependencies(this);
+    } else if (localController is GetTickerProviderStateMixin) {
+      localController.didChangeDependencies(this);
+    }
   }
 
   void _filterUpdate() {
@@ -472,12 +521,67 @@ class BindElement<T> extends InheritedElement {
     }
   }
 
+  /// Marks controllers whose disposal was requested by their creator
+  /// element while other elements were still subscribed, so the last
+  /// unsubscribing element can finish the disposal.
+  static final Expando<bool> _deferredDisposal = Expando<bool>();
+
+  /// Whether [controller] still has live listeners other than this
+  /// element's own (already removed) subscription — e.g. a freshly
+  /// inflated [BindElement] that replaced this one after a tree-shape
+  /// change (LayoutBuilder breakpoint swap), or another `GetBuilder`
+  /// on the same still-visible page.
+  static bool _hasOtherSubscribers(Object? controller) =>
+      controller is ListNotifierSingleMixin &&
+      !controller.isDisposed &&
+      controller.listenersLength > 0;
+
+  /// Finishes a disposal deferred by this controller's creator element:
+  /// deletes the controller from the registry when it is still the
+  /// registered singleton for this key, otherwise closes the orphaned
+  /// instance directly.
+  void _completeDeferredDisposal(Object controller) {
+    _deferredDisposal[controller] = null;
+    final info = Get.getInstanceInfo<T>(tag: widget.tag);
+    if (info.isRegistered &&
+        (info.isSingleton ?? false) &&
+        (info.isInit ?? false) &&
+        identical(Get.find<T>(tag: widget.tag), controller)) {
+      Get.delete<T>(tag: widget.tag);
+    } else if (controller is GetLifeCycleMixin) {
+      controller.onDelete();
+    }
+  }
+
   void dispose() {
     widget.dispose?.call(this);
+
+    _remove?.call();
+    _remove = null;
+
+    final localController = _controller;
+
     if (_isCreator! || widget.assignId) {
       if (widget.autoRemove && Get.isRegistered<T>(tag: widget.tag)) {
-        Get.delete<T>(tag: widget.tag);
+        if (_hasOtherSubscribers(localController)) {
+          _deferredDisposal[localController as Object] = true;
+        } else {
+          Get.delete<T>(tag: widget.tag);
+        }
+      } else if (_wasStarted &&
+          widget.autoRemove &&
+          localController is GetLifeCycleMixin &&
+          !Get.isRegistered<T>(tag: widget.tag)) {
+        if (_hasOtherSubscribers(localController)) {
+          _deferredDisposal[localController as Object] = true;
+        } else {
+          localController.onDelete();
+        }
       }
+    } else if (localController is ListNotifierSingleMixin &&
+        _deferredDisposal[localController] == true &&
+        !_hasOtherSubscribers(localController)) {
+      _completeDeferredDisposal(localController);
     }
 
     for (final disposer in disposers) {
@@ -486,14 +590,11 @@ class BindElement<T> extends InheritedElement {
 
     disposers.clear();
 
-    _remove?.call();
     _controller = null;
     _isCreator = null;
-    _remove = null;
     _filter = null;
     _needStart = null;
     _controllerBuilder = null;
-    _controller = null;
   }
 
   @override
@@ -519,8 +620,16 @@ class BindElement<T> extends InheritedElement {
   }
 
   @override
+  void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _isMounted = true;
+    _updateTickerMode();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _updateTickerMode();
     widget.didChangeDependencies?.call(this);
   }
 
@@ -545,6 +654,7 @@ class BindElement<T> extends InheritedElement {
 
   @override
   void unmount() {
+    _isMounted = false;
     dispose();
     super.unmount();
   }

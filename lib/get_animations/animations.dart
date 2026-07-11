@@ -152,7 +152,10 @@ class SizeAnimation extends GetAnimatedBuilder<double> {
        );
 }
 
-/// Animation that applies a backdrop blur filter from [begin] to [end] sigma.
+/// Animation that applies a blur filter to the child from [begin] to [end] sigma.
+///
+/// Uses [ImageFiltered] so the blur is applied to the child widget itself,
+/// unlike [BackdropFilter] which blurs the content painted behind the widget.
 class BlurAnimation extends GetAnimatedBuilder<double> {
   /// Creates a [BlurAnimation] blurring the child widget.
   BlurAnimation({
@@ -165,8 +168,8 @@ class BlurAnimation extends GetAnimatedBuilder<double> {
     required double end,
     super.idleValue = 0,
   }) : super(
-         builder: (context, value, child) => BackdropFilter(
-           filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
+         builder: (context, value, child) => ImageFiltered(
+           imageFilter: ImageFilter.blur(sigmaX: value, sigmaY: value),
            child: child,
          ),
          tween: Tween<double>(begin: begin, end: end),

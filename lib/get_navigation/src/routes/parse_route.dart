@@ -153,7 +153,7 @@ class ParseRouteTree {
   void removeRoute<T>(GetPage<T> route) {
     routes.remove(route);
     for (var page in _flattenPage(route)) {
-      removeRoute(page);
+      routes.remove(page);
     }
   }
 
@@ -162,66 +162,92 @@ class ParseRouteTree {
 
     // Add Page children.
     for (var page in _flattenPage(route)) {
-      addRoute(page);
+      routes.add(page);
     }
   }
 
+  /// The middlewares declared directly on the page each flattened child
+  /// page was created from, keyed by the flattened instance stored in
+  /// [routes].
+  ///
+  /// Flattened child pages carry the merged middleware list of their whole
+  /// ancestor chain so that redirects and guards are inherited, but page
+  /// lifecycle callbacks ([GetMiddleware.onBindingsStart],
+  /// [GetMiddleware.onPageBuildStart], [GetMiddleware.onPageBuilt] and
+  /// [GetMiddleware.onPageDispose]) must only run on the route of the page
+  /// that declared the middleware. This registry keeps the declared subset
+  /// retrievable through [ownMiddlewaresOf].
+  final Expando<List<GetMiddleware>> _ownMiddlewares =
+      Expando<List<GetMiddleware>>();
+
+  /// Returns the middlewares declared directly on the registered page
+  /// matching [name], excluding middlewares inherited from ancestor pages
+  /// during route-tree flattening, or `null` when no registered page
+  /// matches [name].
+  List<GetMiddleware>? ownMiddlewaresOf(String name) {
+    final route = _findRoute(name);
+    if (route == null) return null;
+    return _ownMiddlewares[route] ?? route.middlewares;
+  }
+
+  /// Returns every descendant of [route] as a flat list of pages whose
+  /// names are the cumulative paths of their ancestor chain and whose
+  /// middleware, binding and bind lists include the entries inherited from
+  /// every ancestor (ancestors first), each descendant appearing exactly
+  /// once.
   List<GetPage> _flattenPage(GetPage route) {
     final result = <GetPage>[];
     if (route.children.isEmpty) {
       return result;
     }
 
-    final parentPath = route.name;
-    for (var page in route.children) {
-      // Add Parent middlewares to children
-      final parentMiddlewares = [
-        if (page.middlewares.isNotEmpty) ...page.middlewares,
-        if (route.middlewares.isNotEmpty) ...route.middlewares,
-      ];
-
-      final parentBindings = [
-        if (page.binding != null) page.binding!,
-        if (page.bindings.isNotEmpty) ...page.bindings,
-        if (route.bindings.isNotEmpty) ...route.bindings,
-      ];
-
-      final parentBinds = [
-        if (page.binds.isNotEmpty) ...page.binds,
-        if (route.binds.isNotEmpty) ...route.binds,
-      ];
-
-      result.add(
-        _addChild(
-          page,
-          parentPath,
-          parentMiddlewares,
-          parentBindings,
-          parentBinds,
-        ),
-      );
-
-      final children = _flattenPage(page);
-      for (var child in children) {
-        result.add(
-          _addChild(
-            child,
-            parentPath,
-            [
-              ...parentMiddlewares,
-              if (child.middlewares.isNotEmpty) ...child.middlewares,
-            ],
-            [
-              ...parentBindings,
-              if (child.binding != null) child.binding!,
-              if (child.bindings.isNotEmpty) ...child.bindings,
-            ],
-            [...parentBinds, if (child.binds.isNotEmpty) ...child.binds],
-          ),
-        );
-      }
-    }
+    _flattenChildren(
+      route,
+      route.name,
+      route.middlewares,
+      [if (route.binding != null) route.binding!, ...route.bindings],
+      route.binds,
+      result,
+    );
     return result;
+  }
+
+  void _flattenChildren(
+    GetPage parent,
+    String parentPath,
+    List<GetMiddleware> inheritedMiddlewares,
+    List<BindingsInterface> inheritedBindings,
+    List<Bind> inheritedBinds,
+    List<GetPage> result,
+  ) {
+    for (final child in parent.children) {
+      final middlewares = [...inheritedMiddlewares, ...child.middlewares];
+      final bindings = [
+        ...inheritedBindings,
+        if (child.binding != null) child.binding!,
+        ...child.bindings,
+      ];
+      final binds = [...inheritedBinds, ...child.binds];
+
+      final flattened = _addChild(
+        child,
+        parentPath,
+        middlewares,
+        bindings,
+        binds,
+      );
+      _ownMiddlewares[flattened] = child.middlewares;
+      result.add(flattened);
+
+      _flattenChildren(
+        child,
+        flattened.name,
+        middlewares,
+        bindings,
+        binds,
+        result,
+      );
+    }
   }
 
   /// Change the Path for a [GetPage]

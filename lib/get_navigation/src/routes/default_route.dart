@@ -138,6 +138,10 @@ class GetPageRoute<T> extends PageRoute<T>
   final String? title;
 
   /// Function to determine the gesture width for swipe-to-pop.
+  ///
+  /// When null, the back gesture is recognized across the full page width.
+  /// When provided, the gesture only starts within the returned width from
+  /// the leading edge (widened as needed to cover a display notch).
   @override
   final double Function(BuildContext context)? gestureWidth;
 

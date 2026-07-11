@@ -5,6 +5,7 @@ import '../../../get_core/get_core.dart';
 import '../../../get_instance/src/extension_instance.dart';
 import '../../../get_instance/src/lifecycle.dart';
 import '../simple/list_notifier.dart';
+import 'rx_ticker_provider_mixin.dart';
 
 /// Builder function for GetX widgets.
 typedef GetXControllerBuilder<T extends GetLifeCycleMixin> =
@@ -115,6 +116,12 @@ class GetXState<T extends GetLifeCycleMixin> extends State<GetX<T>> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final localController = controller;
+    if (localController is GetSingleTickerProviderStateMixin) {
+      localController.didChangeDependencies(context);
+    } else if (localController is GetTickerProviderStateMixin) {
+      localController.didChangeDependencies(context);
+    }
     if (widget.didChangeDependencies != null) {
       widget.didChangeDependencies!(this);
     }

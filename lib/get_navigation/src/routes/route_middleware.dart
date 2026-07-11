@@ -45,8 +45,12 @@ abstract class GetMiddleware {
   /// This function will be called when the router delegate changes the
   /// current route.
   ///
-  /// The default implmentation is to navigate to
-  /// the input route, with no redirection.
+  /// The default implementation bridges to [redirect]: when [redirect]
+  /// returns a non-null [RouteSettings] pointing to another location, the
+  /// navigation is redirected there (carrying the settings' arguments),
+  /// otherwise the incoming route proceeds untouched. Overriding this
+  /// method replaces that bridge, so an override that should keep honoring
+  /// [redirect] must call `super.redirectDelegate`.
   ///
   /// if this returns null, the navigation is stopped,
   /// and no new routes are pushed.
@@ -62,7 +66,14 @@ abstract class GetMiddleware {
   /// }
   /// ```
   /// {@end-tool}
-  FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) => (route);
+  FutureOr<RouteDecoder?> redirectDelegate(RouteDecoder route) {
+    final settings = redirect(route.pageSettings?.name);
+    final target = settings?.name;
+    if (target != null && target != route.pageSettings?.name) {
+      return RouteDecoder.fromRoute(target, arguments: settings!.arguments);
+    }
+    return route;
+  }
 
   /// This function will be called when this Page is called
   /// you can use it to change something about the page or give it new page
@@ -171,14 +182,39 @@ class PageRedirect {
     this.settings,
   });
 
+  /// The parameters of the route whose middlewares are currently being
+  /// evaluated, or `null` when no middleware resolution is in flight.
+  ///
+  /// While middlewares run for an in-flight navigation, the router
+  /// delegate's history still reflects the previous route, so a top-of-stack
+  /// lookup would hand [GetMiddleware.redirect] and
+  /// [GetMiddleware.onPageCalled] stale parameters. [GetDelegate.parameters]
+  /// (and therefore `Get.parameters`) prefers this override while it is set,
+  /// making the parameters of the route being resolved (including the query
+  /// parameters added by a previous redirect) visible to middlewares.
+  static Map<String, String>? resolvingParameters;
+
   // redirect all pages that needes redirecting
   GetPageRoute<T> getPageToRoute<T>(
     GetPage rou,
     GetPage? unk,
     BuildContext context,
   ) {
-    while (needRecheck(context)) {}
-    final r = isUnknown ? unk ?? context.delegate.notFoundRoute : rou;
+    var redirected = false;
+    final visited = <String>{};
+    while (needRecheck(context)) {
+      redirected = true;
+      final target = settings?.name;
+      if (target == null || !visited.add(target)) {
+        // A middleware redirect cycle can never settle; degrade to the
+        // not-found page instead of looping forever on the UI thread.
+        isUnknown = true;
+        break;
+      }
+    }
+    final r = isUnknown
+        ? unk ?? context.delegate.notFoundRoute
+        : (redirected ? route ?? rou : rou);
 
     return GetPageRoute<T>(
       page: r.page,
@@ -204,7 +240,7 @@ class PageRedirect {
       transition: r.transition,
       popGesture: r.popGesture,
       fullscreenDialog: r.fullscreenDialog,
-      middlewares: r.middlewares,
+      middlewares: context.delegate.ownMiddlewaresOf(r.name) ?? r.middlewares,
     );
   }
 
@@ -223,25 +259,34 @@ class PageRedirect {
 
     // No middlewares found return match.
     if (match.route!.middlewares.isEmpty) {
+      route = match.route;
       return false;
     }
 
     final runner = MiddlewareRunner(match.route!.middlewares);
-    route = runner.runOnPageCalled(match.route);
-    addPageParameter(route!);
+    final matchParameters = match.route!.parameters;
+    final previousResolvingParameters = resolvingParameters;
+    resolvingParameters = matchParameters == null
+        ? null
+        : Map<String, String>.of(matchParameters);
+    try {
+      final called = runner.runOnPageCalled(match.route);
+      if (called == null) {
+        // Returning null from onPageCalled cancels the page: degrade
+        // gracefully to the not-found page.
+        isUnknown = true;
+        return false;
+      }
+      route = called;
 
-    final newSettings = runner.runRedirect(settings!.name);
-    if (newSettings == null) {
-      return false;
+      final newSettings = runner.runRedirect(settings!.name);
+      if (newSettings == null) {
+        return false;
+      }
+      settings = newSettings;
+      return true;
+    } finally {
+      resolvingParameters = previousResolvingParameters;
     }
-    settings = newSettings;
-    return true;
-  }
-
-  void addPageParameter(GetPage route) {
-    if (route.parameters == null) return;
-
-    final parameters = Map<String, String?>.from(Get.parameters);
-    parameters.addEntries(route.parameters!.entries);
   }
 }

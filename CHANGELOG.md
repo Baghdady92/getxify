@@ -66,6 +66,86 @@ Follow-up fixes found by an adversarial review of the changes above:
 - **Fixed superseded `GetxService` leaking in the `lateRemove` chain** - A stale, already-replaced service now receives `onClose`/`onDelete` on a non-force delete and no longer makes the live registration permanently undeletable; the service-protection guard still applies to live instances
 - **`Get.updateLocale` now records explicit locale intent** - An OS locale change can no longer override a user-selected locale that happens to equal the previously auto-applied device locale
 
+### Upstream Issue Fixes — Round 2
+
+A second sweep over the full upstream backlog (~960 additional issues screened, ~110 deep-triaged) fixed 50 more confirmed defects, each with new regression tests.
+
+#### System Back & Pop Behavior
+
+- **System back / predictive back now respects `PopScope`, `WillPopScope` and `GetPage.canPop`** - `GetDelegate.popRoute` consults the route's pop disposition like `NavigatorState.maybePop`, and a blocked pop reports `onPopInvoked` with `didPop: false` (getx#3216, getx#2996, getx#2704, getx#2869, getx#2434, getx#2188)
+- **Browser back on Flutter Web respects pop vetoes** - Single-page back navigations consult `PopScope`/`WillPopScope`/`canPop` before popping (getx#3121)
+- **Browser back with an open dialog/bottom sheet now closes the overlay** - instead of popping the underlying page (getx#3322)
+- **`Get.back()`/`Get.close()` now close open Scaffold drawers** - and other local-history entries such as persistent bottom sheets, without popping the page (getx#3227, getx#2717)
+
+#### Navigation & Routing
+
+- **Fixed `preventDuplicates` being ignored in Navigator 2.0** - `GetPage.copyWith` no longer drops `preventDuplicateHandlingMode`, `preventDuplicates: false` on `Get.to`/`Get.toNamed`/`GetPage` pushes duplicates again, and `popUntilOriginalRoute` pops back to (not past) the original route (getx#3261, getx#3251, getx#2975, getx#3054)
+- **`Get.arguments`/`Get.parameters` are scoped to the building page** - pages pushed in the same action no longer see each other's arguments (getx#2286)
+- **Fixed `Get.to` with different closures returning the same widget type** - navigation no longer silently re-shows the old page (getx#2161)
+- **`initialRoute` is honored when a `/` page is registered** - the app starts on `initialRoute` and `/` stays reachable (getx#3196)
+- **A stopped initial route no longer leaves a blank screen** - the delegate falls back to the not-found page when middleware nullifies the first navigation or a deep link (getx#2949)
+- **Fixed `Get.currentRoute`/`Get.previousRoute` corruption by overlays** - dismissing stacked dialogs/sheets no longer leaves synthetic `DIALOG/BOTTOMSHEET <hash>` names in routing state (getx#2597, getx#2334)
+- **Web URL strategy is applied once per process** - no more "Cannot set URL strategy a second time" crashes (getx#3224)
+- **`Get.defaultDialog` renders its custom action** - `custom`, `textCustom` and `onCustom` were previously silently ignored (getx#1716, getx#3042, getx#1381)
+- **`Get.showOverlay` always cleans up on error** - including non-`Exception` throws like Strings and Errors (getx#2827)
+- **`Get.bottomSheet` works inside `GetCupertinoApp`** - falls back to `DefaultMaterialLocalizations` when no material delegates are installed (getx#2337)
+- **`shortcuts` parameter type matches `MaterialApp`** - now `Map<ShortcutActivator, Intent>?`, accepting `SingleActivator`/`CharacterActivator` (getx#2615)
+- **Snackbar no longer blocks taps around it** - the margin and the space beside width-constrained snackbars pass pointer events through, while the bar stays tappable and swipe-dismissible (getx#3012, getx#2995)
+
+#### Middleware & Route Tree
+
+- **v4-style `GetMiddleware.redirect()` is honored again** - in all named navigation, with forwarded arguments; replace-style navigations (`off`/`offAll`/`offAllNamed`) now run middleware, so `redirectDelegate` returning null stops them too (getx#2779, getx#2713, getx#2579, getx#2231)
+- **Middlewares run in `priority` order and stop at the first redirect** (getx#1298)
+- **Middleware lifecycle callbacks run once, on the declaring page's route** - instead of once per page in the nested stack; nested flattening no longer registers duplicate routes; navigation guards remain inherited by children (getx#3170)
+- **`Get.parameters` reflects the in-flight route while middlewares run** - including parameters added by a redirect; redirect cycles degrade to the not-found page instead of freezing (getx#3139)
+- **`onPageCalled` returning null cancels the page gracefully** - instead of a null-check crash (getx#2909)
+- **A parent `GetPage`'s `binding` runs when the initial route is a child page** - inherited bindings execute parents-first (getx#2085)
+- **`GetRouterOutlet.initialRoute` runs the middleware pipeline** - synchronous `redirect`/`redirectDelegate` results are honored (async initial-route guards remain a documented limitation) (getx#1978)
+
+#### Nested Navigation & GetRouterOutlet
+
+- **Nested shells stay mounted when unrelated root routes sit on top** - `participatesInRootNavigator` shells (with their navigators and controllers) survive sibling navigation, and pops restore the previously selected nested child (getx#3336, getx#2011)
+- **Doubly nested `GetRouterOutlet`s work** - deeper outlets' pages no longer leak into the outer navigator, and outlets no longer fail the Navigator pages-API assertion (getx#3347, getx#2638)
+- **Pages marked `participatesInRootNavigator` are no longer mounted twice** (getx#3111)
+- **Anchorless `GetRouterOutlet` no longer reuses the root navigator's `GlobalKey`** - fixing a guaranteed duplicate-key failure (getx#2742)
+- **Hero animations fly exactly once** - removed `GetNavigator`'s duplicate `HeroController` (the framework scope owns it), gave nested outlets their own persistent `HeroControllerScope`, and back-gesture detectors disposed mid-drag no longer leave the navigator stuck in `userGestureInProgress` (getx#3350, getx#2931)
+
+#### Transitions & Gestures
+
+- **`Transition.native` honors the theme's `pageTransitionsTheme`** - e.g. `PredictiveBackPageTransitionsBuilder` (getx#2340)
+- **`Get.defaultTransition` is no longer force-initialized from the fallback theme** - routes without an explicit transition follow the app theme on all platforms (getx#3274)
+- **`gestureWidth` takes effect** - when set, the back-swipe only starts within that width from the leading edge (getx#3373)
+- **Back-swipe direction fixed for `Transition.leftToRight`/`leftToRightWithFade`** - the page follows the finger toward the edge it entered from (getx#2193)
+
+#### Dependency Injection & State Management
+
+- **Restored `Get.putAsync` and added `Bind.putAsync`** - asynchronously-constructed dependencies register through `put()` with the full lifecycle (getx#3239)
+- **`Get.reloadAll()` calls `onDelete`/`onClose` before clearing instances** - and skips `GetxService`s unless forced, matching `Get.reload<S>()` (getx#2397)
+- **Nullable generic registrations share the non-nullable registry key** - `Get.put<App?>(...)` is visible to `Get.find<App>()` (getx#2657)
+- **`Get.replace`/`Get.lazyReplace` (and the `Bind` variants) really replace** - fenix registrations, `GetxService`s and pending `lateRemove` chains no longer resurrect the old builder (getx#2268)
+- **`GetBuilder(global: false)` controllers receive `onClose` on unmount** - unless `autoRemove: false` (getx#2123)
+- **Controllers survive tree-shape swaps** - a `LayoutBuilder` breakpoint change no longer deletes the controller the visible page is using; disposal defers to the last live subscriber (getx#2393)
+- **`GetBuilder`/`Bind` `initState` callbacks can access `state.controller`** - the callback now runs after the controller is available (getx#2354)
+- **Ticker providers follow `TickerMode`** - `GetSingleTickerProviderStateMixin`/`GetTickerProviderStateMixin` tickers are muted when the route is covered (getx#2426)
+- **Renamed `rx_ticket_provider_mixin.dart` to `rx_ticker_provider_mixin.dart`** - fixing the long-standing typo (getx#2801)
+
+#### Reactive Types, Utils & Animations
+
+- **`bindStream` no longer leaks subscriptions** - it returns its `StreamSubscription`, supports `cancelPrevious: true`, and cancels all bindings when the Rx closes (getx#3000)
+- **`GetPlatform.isMacOS` works on Firefox for macOS** - and iPad/iPod `navigator.platform` values are detected correctly (getx#1936)
+- **`BlurAnimation` blurs its child, not the backdrop** - and `GetAnimatedBuilder` honors updated `duration`/`tween`/`curve` on rebuild (getx#3233)
+- **Documented `trParams` placeholder ordering for RTL translations** - with regression tests (getx#3073)
+
+#### Review Hardening — Round 2
+
+Follow-up fixes from an adversarial review of this round's changes:
+
+- **Fixed `Get.reloadAll()` throwing `ConcurrentModificationError`** - when an instance's `onClose` mutates the registry
+- **Middleware redirect cycles can no longer hang navigation** - the delegate detects revisited locations and settles on the not-found route
+- **Platform-back no longer pops the wrong pages** - when a `willPop` callback navigates during the veto check, the target entry is re-located by identity after the await
+- **Fixed `GetAnimatedBuilder` leaking `CurvedAnimation` objects** - they are now owned and disposed across updates and unmount
+- **Hardened in-flight middleware parameters against overlapping navigations** - `resolvingParameters` uses save/restore semantics instead of clear-to-null
+
 ---
 
 ## 2.0.2

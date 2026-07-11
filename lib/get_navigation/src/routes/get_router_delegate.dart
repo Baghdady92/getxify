@@ -105,12 +105,35 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return _routeTree.matchRoute(name, arguments: arguments);
   }
 
+  /// Returns the middlewares declared directly on the registered page
+  /// matching [name], excluding middlewares inherited from ancestor pages
+  /// during route-tree flattening, or `null` when no registered page
+  /// matches [name].
+  ///
+  /// Inherited middlewares participate in navigation decisions
+  /// ([GetMiddleware.redirect], [GetMiddleware.redirectDelegate] and
+  /// [GetMiddleware.onPageCalled]) but their page lifecycle callbacks must
+  /// only run on the route of the page that declared them, so [PageRedirect]
+  /// hands this subset to the created [GetPageRoute].
+  List<GetMiddleware>? ownMiddlewaresOf(String name) {
+    return _routeTree.ownMiddlewaresOf(name);
+  }
+
   // GlobalKey<NavigatorState> get navigatorKey => Get.key;
 
   @override
   GlobalKey<NavigatorState> navigatorKey;
 
   final String? restorationScopeId;
+
+  /// Whether the web URL strategy has already been applied in this process.
+  ///
+  /// The Flutter web engine only allows the URL strategy to be set once,
+  /// before the app has been initialized, so any root [GetDelegate] created
+  /// afterwards (e.g. after remounting [GetRoot] or on a hot restart) must
+  /// not attempt to set it again, otherwise the engine throws
+  /// "Cannot set URL strategy a second time".
+  static bool _urlStrategyApplied = false;
 
   GetDelegate({
     GetPage? notFoundRoute,
@@ -130,41 +153,92 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
          page: () =>
              const Scaffold(body: Center(child: Text('Route not found'))),
        ) {
-    if (!showHashOnUrl && GetPlatform.isWeb) setUrlStrategy();
+    if (!showHashOnUrl && GetPlatform.isWeb && !_urlStrategyApplied) {
+      _urlStrategyApplied = true;
+      try {
+        setUrlStrategy();
+      } catch (e) {
+        // Setting the strategy is best-effort: the web engine forbids it
+        // once the app has been initialized (or when the application set
+        // one itself before runApp), which must not break navigation.
+        Get.log('Could not set the URL strategy: $e', isError: true);
+      }
+    }
     addPages(pages);
     addPage(notFoundRoute);
     Get.log('GetDelegate is created !');
   }
 
-  Future<RouteDecoder?> runMiddleware(RouteDecoder config) async {
-    final middlewares = config.currentTreeBranch.last.middlewares;
-    if (middlewares.isEmpty) {
+  Future<RouteDecoder?> runMiddleware(RouteDecoder config) {
+    return _runMiddleware(config, <String>{});
+  }
+
+  Future<RouteDecoder?> _runMiddleware(
+    RouteDecoder config,
+    Set<String> visited,
+  ) async {
+    if (config.currentTreeBranch.isEmpty ||
+        config.currentTreeBranch.last.middlewares.isEmpty) {
       return config;
     }
+    final location = config.pageSettings?.name;
+    if (location != null && !visited.add(location)) {
+      // A middleware redirect cycle can never settle; degrade to the
+      // not-found page (mirroring [PageRedirect.getPageToRoute]) instead
+      // of recursing forever.
+      Get.log(
+        'Redirect loop detected while resolving "$location". '
+        'Falling back to ${notFoundRoute.name}.',
+        isError: true,
+      );
+      return _getRouteDecoder(_buildPageSettings(notFoundRoute.name)) ??
+          config;
+    }
+    // Middlewares run in ascending [GetMiddleware.priority] order, and the
+    // route-tree flattening lists inherited (ancestor) middlewares before
+    // the page's own, so at equal priority a parent guard runs first.
+    final middlewares = List.of(config.currentTreeBranch.last.middlewares)
+      ..sort((a, b) => a.priority.compareTo(b.priority));
     var iterator = config;
-    for (var item in middlewares) {
-      var redirectRes = await item.redirectDelegate(iterator);
+    // Save/restore instead of clearing: an overlapping navigation (or a
+    // synchronous resolution during the awaits below) must not clobber the
+    // parameters another in-flight resolution is still relying on.
+    final previousResolvingParameters = PageRedirect.resolvingParameters;
+    try {
+      PageRedirect.resolvingParameters = config.pageSettings?.params;
+      for (var item in middlewares) {
+        var redirectRes = await item.redirectDelegate(iterator);
 
-      if (redirectRes == null) {
-        config.route?.completer?.complete();
-        return null;
-      }
-      if (config != redirectRes) {
-        config.route?.completer?.complete();
-        Get.log('Redirect to ${redirectRes.pageSettings?.name}');
-      }
+        if (redirectRes == null) {
+          config.route?.completer?.complete();
+          return null;
+        }
+        if (redirectRes.route == null) {
+          // The middleware redirected to a location that is not registered:
+          // degrade gracefully to the not-found page.
+          redirectRes =
+              _getRouteDecoder(_buildPageSettings(notFoundRoute.name)) ??
+              redirectRes;
+        }
+        if (config != redirectRes) {
+          config.route?.completer?.complete();
+          Get.log('Redirect to ${redirectRes.pageSettings?.name}');
+        }
 
-      iterator = redirectRes;
-      // Stop the iteration over the middleware if we changed page
-      // and that redirectRes is not the same as the current config.
-      if (config != redirectRes) {
-        break;
+        iterator = redirectRes;
+        // Stop the iteration over the middleware if we changed page
+        // and that redirectRes is not the same as the current config.
+        if (config != redirectRes) {
+          break;
+        }
       }
+    } finally {
+      PageRedirect.resolvingParameters = previousResolvingParameters;
     }
     // If the target is not the same as the source, we need
     // to run the middlewares for the new route.
     if (iterator != config) {
-      return await runMiddleware(iterator);
+      return await _runMiddleware(iterator, visited);
     }
     return iterator;
   }
@@ -190,11 +264,53 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return completer?.future as T?;
   }
 
+  /// The settings of the page whose widget subtree is currently being
+  /// built, or `null` outside of a page build.
+  ///
+  /// When several pages are pushed within the same frame, the lower pages
+  /// build while a newer entry already sits on top of [activePages], so a
+  /// top-of-stack lookup would hand them the newest route's arguments.
+  /// Scoping [arguments] and [parameters] to the building page keeps every
+  /// page (and the controllers it instantiates while building) bound to its
+  /// own settings.
+  static PageSettings? _buildingPageSettings;
+
+  static bool _buildingPageResetScheduled = false;
+
+  static void _reportBuildingPage(PageSettings settings) {
+    _buildingPageSettings = settings;
+    if (_buildingPageResetScheduled) return;
+    _buildingPageResetScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _buildingPageSettings = null;
+      _buildingPageResetScheduled = false;
+    });
+  }
+
+  /// The arguments of the page currently being built, falling back to the
+  /// arguments of the top-most entry of [activePages] outside of a page
+  /// build, so that pages pushed within the same frame each observe their
+  /// own arguments.
   T arguments<T>() {
+    final building = _buildingPageSettings;
+    if (building != null) return building.arguments as T;
     return currentConfiguration?.pageSettings?.arguments as T;
   }
 
+  /// The parameters of the page currently being built, falling back to the
+  /// parameters of the top-most entry of [activePages] outside of a page
+  /// build (see [arguments]).
+  ///
+  /// While middlewares of an in-flight navigation are being resolved, the
+  /// parameters of the route being resolved
+  /// ([PageRedirect.resolvingParameters]) take precedence, so that
+  /// middlewares observe the parameters of the navigation they are deciding
+  /// on instead of the previous route's.
   Map<String, String> get parameters {
+    final resolving = PageRedirect.resolvingParameters;
+    if (resolving != null) return resolving;
+    final building = _buildingPageSettings;
+    if (building != null) return building.params;
     return currentConfiguration?.pageSettings?.params ?? {};
   }
 
@@ -311,22 +427,48 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     }
   }
 
-  /// gets the visual pages from the current _activePages entry
+  /// Computes the page stack hosted by the root navigator from the
+  /// navigation history.
   ///
-  /// visual pages must have [GetPage.participatesInRootNavigator] set to true
+  /// When no page of any [activePages] entry declares
+  /// [GetPage.participatesInRootNavigator], every history entry contributes
+  /// its leaf route (the default behavior: all routes participate in the
+  /// root navigator).
+  ///
+  /// Otherwise the stack is derived across all history entries in stack
+  /// order: an entry whose tree branch carries participation marks
+  /// contributes its pages marked `true`, while an unmarked entry (a plain
+  /// top-level route) contributes its leaf route. Pages are deduplicated by
+  /// key, so several entries sharing a marked ancestor (e.g. two children
+  /// of the same nested shell) keep a single instance of that ancestor
+  /// mounted. Deriving the stack from the whole history — instead of only
+  /// the current entry's branch — keeps a nested shell, its navigator and
+  /// its controllers alive when an unrelated sibling route is pushed on top
+  /// of it.
   Iterable<GetPage> getVisualPages(RouteDecoder? currentHistory) {
-    final res = currentHistory!.currentTreeBranch.where(
-      (r) => r.participatesInRootNavigator != null,
+    final anyMarked = _activePages.any(
+      (entry) => entry.currentTreeBranch.any(
+        (page) => page.participatesInRootNavigator != null,
+      ),
     );
-    if (res.isEmpty) {
+    if (!anyMarked) {
       //default behavior, all routes participate in root navigator
       return _activePages.map((e) => e.route!);
-    } else {
-      //user specified at least one participatesInRootNavigator
-      return res.where(
-        (element) => element.participatesInRootNavigator == true,
-      );
     }
+    final seenKeys = <LocalKey?>{};
+    final pages = <GetPage>[];
+    for (final entry in _activePages) {
+      final marked = entry.currentTreeBranch
+          .where((page) => page.participatesInRootNavigator != null)
+          .toList();
+      final contribution = marked.isEmpty
+          ? [if (entry.route != null) entry.route!]
+          : marked.where((page) => page.participatesInRootNavigator == true);
+      for (final page in contribution) {
+        if (seenKeys.add(page.key)) pages.add(page);
+      }
+    }
+    return pages;
   }
 
   @override
@@ -365,6 +507,29 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     if (completer?.isCompleted == false) completer!.complete(result);
   }
 
+  /// Removes a duplicate history [entry] superseded by a new push,
+  /// completing its route completer so that a navigation future still
+  /// awaiting the removed entry (e.g. an earlier [to] call) resolves and
+  /// runs its cleanup instead of pending forever.
+  void _removeSupersededEntry(RouteDecoder entry) {
+    final index = _activePages.indexWhere((e) => identical(e, entry));
+    if (index >= 0) _activePages.removeAt(index);
+    final completer = entry.route?.completer;
+    if (completer?.isCompleted == false) completer!.complete(null);
+  }
+
+  /// Rekeys [decoder]'s route with a fresh unique key so the navigator
+  /// disposes any same-key page and rebuilds this one from scratch, instead
+  /// of updating the old route in place and keeping its stale content.
+  void _recreateEntry(RouteDecoder decoder) {
+    final route = decoder.route;
+    if (route == null) return;
+    final builder = _sourceBuilder[route];
+    final rekeyed = route.copyWith(key: UniqueKey());
+    if (builder != null) _sourceBuilder[rekeyed] = builder;
+    decoder.route = rekeyed;
+  }
+
   @override
   Future<T?> toNamed<T>(
     String page, {
@@ -380,6 +545,9 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final args = _buildPageSettings(page, arguments);
     final route = _getRouteDecoder<T>(args);
     if (route != null) {
+      if (!preventDuplicates) {
+        route.route = route.route!.copyWith(preventDuplicates: false);
+      }
       return _push<T>(route);
     } else {
       goToUnknownPage();
@@ -426,13 +594,22 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       fullscreenDialog: fullscreenDialog,
       bindings: bindings,
       transitionDuration: duration ?? Get.defaultTransitionDuration,
+      preventDuplicates: preventDuplicates,
       preventDuplicateHandlingMode: preventDuplicateHandlingMode,
     );
 
     _routeTree.addRoute(getPage);
     final args = _buildPageSettings(routeName, arguments);
-    final route = _getRouteDecoder<T>(args);
-    final result = await _push<T>(route!, rebuildStack: rebuildStack);
+    // Auto-generated route names collide when two different page closures
+    // return the same widget type, and a route tree lookup would resolve
+    // such a name to the page registered by an earlier, still active call.
+    // Decoding directly from the page built for this call guarantees the
+    // correct widget is used.
+    final route = _configureRouterDecoder<T>(
+      RouteDecoder([getPage], args),
+      args,
+    );
+    final result = await _push<T>(route, rebuildStack: rebuildStack);
     _routeTree.removeRoute(getPage);
     return result;
   }
@@ -705,14 +882,24 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   }
 
   Future<T?> _replace<T>(PageSettings arguments, GetPage<T> page) async {
-    final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
     _routeTree.addRoute(page);
 
-    final activePage = _getRouteDecoder(arguments);
+    // Decode directly from the page built for this call: a route tree
+    // lookup could resolve an auto-generated name to a same-name page
+    // registered by an earlier, still active navigation (see [to]).
+    final decoder = _configureRouterDecoder<T>(
+      RouteDecoder([page], arguments),
+      arguments,
+    );
 
-    // final activePage = _configureRouterDecoder<T>(route!, arguments);
+    final activePage = await runMiddleware(decoder);
+    if (activePage == null) {
+      _routeTree.removeRoute(page);
+      return null;
+    }
 
-    _activePages[index] = activePage!;
+    final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
+    _activePages[index] = activePage;
 
     notifyListeners();
     final result = await activePage.route?.completer?.future as Future<T?>?;
@@ -721,9 +908,11 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return result;
   }
 
-  Future<T?> _replaceNamed<T>(RouteDecoder activePage) async {
+  Future<T?> _replaceNamed<T>(RouteDecoder page) async {
+    final activePage = await runMiddleware(page);
+    if (activePage == null) return null;
+
     final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
-    // final activePage = _configureRouterDecoder<T>(page, arguments);
     _activePages[index] = activePage;
 
     notifyListeners();
@@ -779,19 +968,65 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       decoder.parameters.addAll(parameters);
     }
 
-    decoder.route = decoder.route?.copyWith(
-      completer: _activePages.isEmpty ? null : Completer<T?>(),
-      arguments: arguments,
-      parameters: parameters,
-      key: ValueKey(arguments.name),
-    );
+    final route = decoder.route;
+    if (route != null) {
+      final pageBuilder = route.page;
+      final configured = route.copyWith(
+        completer: _activePages.isEmpty ? null : Completer<T?>(),
+        arguments: arguments,
+        parameters: parameters,
+        key: ValueKey(arguments.name),
+        page: () =>
+            _PageBuildScope(settings: arguments, child: pageBuilder()),
+      );
+      _sourceBuilder[configured] = pageBuilder;
+      decoder.route = configured;
+    }
 
     return decoder;
   }
 
+  /// Maps a configured [GetPage] back to the page builder it was decoded
+  /// from, so that two decodes of the same registered route can be
+  /// recognized even though each decode wraps the builder in its own
+  /// [_PageBuildScope] closure.
+  ///
+  /// Two different pages can share a route name (and therefore a page key)
+  /// when the name is auto-generated from the closure's widget type (see
+  /// [to]); comparing source builders lets [_push] rebuild the page when
+  /// the duplicate actually carries a different builder.
+  static final Expando<GetPageBuilder> _sourceBuilder =
+      Expando<GetPageBuilder>();
+
+  /// Whether [newRoute] was decoded from the same page builder as
+  /// [existingRoute]; `false` when either builder is unknown.
+  static bool _sameSourceBuilder(GetPage? newRoute, GetPage? existingRoute) {
+    final newBuilder = newRoute == null ? null : _sourceBuilder[newRoute];
+    final existingBuilder = existingRoute == null
+        ? null
+        : _sourceBuilder[existingRoute];
+    if (newBuilder == null || existingBuilder == null) return false;
+    return identical(newBuilder, existingBuilder);
+  }
+
   Future<T?> _push<T>(RouteDecoder decoder, {bool rebuildStack = true}) async {
     var res = await runMiddleware(decoder);
-    if (res == null) return null;
+    if (res == null) {
+      // A middleware stopped the navigation. When that happens while the
+      // page stack is still empty (initial route, deep link or web
+      // refresh), leaving the stack empty would render a permanently blank
+      // screen, so fall back to the not-found page.
+      if (_activePages.isEmpty) {
+        final notFound = _getRouteDecoder<T>(
+          _buildPageSettings(notFoundRoute.name),
+        );
+        if (notFound != null) {
+          _activePages.add(notFound);
+          if (rebuildStack) notifyListeners();
+        }
+      }
+      return null;
+    }
 
     final preventDuplicateHandlingMode =
         res.route?.preventDuplicateHandlingMode ??
@@ -801,25 +1036,41 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       (element) => element.route?.key == res.route?.key,
     );
 
-    /// There are no duplicate routes in the stack
     if (onStackPage == null) {
+      /// There are no duplicate routes in the stack
+      _activePages.add(res);
+    } else if (res.route?.preventDuplicates == false) {
+      /// Duplicates are explicitly allowed: push a new instance with a
+      /// unique page key, since the navigator requires page keys to be
+      /// unique within its stack.
+      _recreateEntry(res);
       _activePages.add(res);
     } else {
-      /// There are duplicate routes, reorder
+      /// There are duplicate routes, apply the handling mode
       switch (preventDuplicateHandlingMode) {
         case PreventDuplicateHandlingMode.doNothing:
           break;
         case PreventDuplicateHandlingMode.reorderRoutes:
-          _activePages.remove(onStackPage);
+          _removeSupersededEntry(onStackPage);
+          if (!_sameSourceBuilder(res.route, onStackPage.route)) {
+            // The duplicate name belongs to a different page builder (two
+            // page closures returning the same widget type share the same
+            // auto-generated name): reusing the page key would make the
+            // navigator keep the old route and its stale content, so the
+            // new page must be rebuilt under a fresh key.
+            _recreateEntry(res);
+          }
           _activePages.add(res);
           break;
         case PreventDuplicateHandlingMode.popUntilOriginalRoute:
-          while (_activePages.last == onStackPage) {
+          while (_activePages.length > 1 &&
+              !identical(_activePages.last, onStackPage)) {
             _popWithResult();
           }
           break;
         case PreventDuplicateHandlingMode.recreate:
-          _activePages.remove(onStackPage);
+          _removeSupersededEntry(onStackPage);
+          _recreateEntry(res);
           _activePages.add(res);
       }
     }
@@ -864,6 +1115,39 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       }
     }
     if (existingIndex >= 0) {
+      if (existingIndex < _activePages.length - 1) {
+        // A platform back navigation with a pageless route (dialog, bottom
+        // sheet, imperative [Navigator.push] route) on top must dismiss
+        // that overlay instead of popping the page it is anchored to; each
+        // back press then closes a single overlay.
+        if (_topRouteIsPageless) {
+          await handlePopupRoutes();
+          notifyListeners();
+          return;
+        }
+        // When exactly one page would be popped, honor the top route's
+        // pop-veto surface (PopScope, WillPopScope, Page.canPop), like
+        // [popRoute] does. Multi-entry history jumps cannot be vetoed
+        // per page.
+        if (existingIndex == _activePages.length - 2) {
+          final target = _activePages[existingIndex];
+          if (await _isPopVetoed()) {
+            notifyListeners();
+            return;
+          }
+          // The history may have been mutated while awaiting the veto
+          // check (a willPop callback can navigate), mirroring [popRoute]'s
+          // post-await guard: re-locate the target entry and bail out when
+          // it is gone, so the pop loop cannot remove unrelated pages.
+          existingIndex = _activePages.lastIndexWhere(
+            (element) => identical(element, target),
+          );
+          if (existingIndex < 0) {
+            notifyListeners();
+            return;
+          }
+        }
+      }
       while (_activePages.length - 1 > existingIndex) {
         _popWithResult();
       }
@@ -892,14 +1176,44 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return false;
   }
 
+  /// Consults the pop-veto surface of the topmost visual route, mirroring
+  /// [NavigatorState.maybePop]: first the deprecated `Route.willPop`
+  /// (`WillPopScope` callbacks), then [Route.popDisposition] ([PopScope]
+  /// widgets and [Page.canPop]).
+  ///
+  /// Returns `true` when the pop must not proceed. A veto surfaced through
+  /// [Route.popDisposition] notifies the route via
+  /// [Route.onPopInvokedWithResult] with `didPop: false`, so
+  /// [PopScope.onPopInvokedWithResult] observes the blocked attempt. The
+  /// pop is also considered handled when the top route changed while
+  /// awaiting the `willPop` callbacks.
+  Future<bool> _isPopVetoed([Object? result]) async {
+    final route = _topVisualRoute;
+    if (route == null) return false;
+    // ignore: deprecated_member_use
+    if (await route.willPop() == RoutePopDisposition.doNotPop) {
+      return true;
+    }
+    if (!identical(_topVisualRoute, route)) return true;
+    if (route.popDisposition == RoutePopDisposition.doNotPop) {
+      route.onPopInvokedWithResult(false, result);
+      return true;
+    }
+    return false;
+  }
+
   @override
   Future<bool> popRoute({Object? result, PopMode? popMode}) async {
     //Returning false will cause the entire app to be popped.
     final wasPopup = await handlePopupRoutes(result: result);
     if (wasPopup) return true;
 
-    if (_canPop(popMode ?? backButtonPopMode)) {
-      await _pop(popMode ?? backButtonPopMode, result);
+    final mode = popMode ?? backButtonPopMode;
+    if (_canPop(mode)) {
+      if (await _isPopVetoed(result)) return true;
+      // The history may have been mutated while awaiting the veto check.
+      if (!_canPop(mode)) return true;
+      await _pop(mode, result);
       notifyListeners();
       return true;
     }
@@ -934,5 +1248,22 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final completer = _activePages.removeAt(index).route?.completer;
     if (completer?.isCompleted == false) completer!.complete(null);
     notifyListeners();
+  }
+}
+
+/// Reports the [PageSettings] of the page whose subtree is being built, so
+/// that [GetDelegate.arguments] and [GetDelegate.parameters] resolve to the
+/// building page instead of the top of the stack while several pages build
+/// within the same frame.
+class _PageBuildScope extends StatelessWidget {
+  const _PageBuildScope({required this.settings, required this.child});
+
+  final PageSettings settings;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    GetDelegate._reportBuildingPage(settings);
+    return child;
   }
 }

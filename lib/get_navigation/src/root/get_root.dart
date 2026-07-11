@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:getxify/get_navigation/src/routes/test_kit.dart';
@@ -476,10 +475,6 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     Get.isLogEnable = config.enableLog ?? kDebugMode;
     Get.log = config.logWriterCallback ?? defaultLogWriterCallback;
 
-    if (config.defaultTransition == null) {
-      config = config.copyWith(defaultTransition: getThemeTransition());
-    }
-
     Future(() => onReady());
   }
 
@@ -495,24 +490,6 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
 
   void onReady() {
     config.onReady?.call();
-  }
-
-  Transition? getThemeTransition() {
-    final platform = context.theme.platform;
-    final matchingTransition =
-        Get.theme.pageTransitionsTheme.builders[platform];
-    switch (matchingTransition) {
-      case CupertinoPageTransitionsBuilder():
-        return Transition.cupertino;
-      case ZoomPageTransitionsBuilder():
-        return Transition.zoom;
-      case FadeUpwardsPageTransitionsBuilder():
-        return Transition.fade;
-      case OpenUpwardsPageTransitionsBuilder():
-        return Transition.native;
-      default:
-        return null;
-    }
   }
 
   /// The last locale this state applied automatically from the device.

@@ -111,7 +111,19 @@ extension AnimationExtension on Widget {
 
   /// Translates/slides the widget dynamically using an [offset] builder.
   ///
-  /// - [offset] Callback that provides the slide offset based on the animation value.
+  /// The [offset] callback is invoked on every animation frame with the
+  /// current tweened value (interpolated from [begin] to [end]) as its second
+  /// parameter, and must use that value to produce the translation for that
+  /// frame. Returning a constant [Offset] results in no visible motion.
+  ///
+  /// ```dart
+  /// // Slides the widget 25 logical pixels downward.
+  /// Text('Hello').slide(
+  ///   offset: (context, value) => Offset(0, 25 * value),
+  /// );
+  /// ```
+  ///
+  /// - [offset] Callback that builds the slide offset from the current animation value.
   /// - [begin] Starting interpolation value.
   /// - [end] Ending interpolation value.
   /// - [duration] The duration of the slide transition.
