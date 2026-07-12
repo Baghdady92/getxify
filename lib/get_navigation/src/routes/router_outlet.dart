@@ -79,14 +79,18 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
   /// Creates a nested navigator that renders the tree-branch pages below
   /// [anchorRoute].
   ///
-  /// The pages are taken from the deepest navigation history entry whose
-  /// branch contains the anchor (so the outlet keeps its current child
-  /// while an unrelated route is on top of the history), truncated after
-  /// the first page that itself anchors a deeper outlet (its descendants
-  /// are hosted by that outlet) and excluding pages marked with
-  /// [GetPage.participatesInRootNavigator], which the root navigator
-  /// renders. [filterPages] runs last and can further reduce the picked
-  /// pages.
+  /// The pages are accumulated across every navigation history entry whose
+  /// branch contains the anchor (see [_cumulativeAnchorStack]): navigating
+  /// between sibling routes inside the outlet keeps the previous sibling
+  /// mounted beneath the new one (state retention), giving the nested
+  /// navigator a real stack — which is what allows the iOS back-swipe
+  /// gesture to pop between siblings (#2107) — and the outlet keeps its
+  /// stack while an unrelated route is on top of the history. Each entry's
+  /// contribution is truncated after the first page that itself anchors a
+  /// deeper outlet (its descendants are hosted by that outlet) and excludes
+  /// pages marked with [GetPage.participatesInRootNavigator], which the
+  /// root navigator renders. [filterPages] runs last and can further reduce
+  /// the picked pages.
   ///
   /// When the picked set is empty the page matching [initialRoute] is
   /// rendered instead, resolved through the synchronous middleware surface
@@ -107,24 +111,22 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
              // jump the ancestor path
              final length = Uri.parse(initialRoute).pathSegments.length;
 
-             ret = config.currentTreeBranch.skip(length).take(length);
+             // Pages participating in the root navigator are rendered by
+             // [GetDelegate.build]; rendering them here as well would
+             // mount them twice.
+             ret = config.currentTreeBranch
+                 .skip(length)
+                 .take(length)
+                 .takeWhile(
+                   (page) => page.participatesInRootNavigator != true,
+                 );
            } else {
-             final branch = _anchorBranch(
+             ret = _cumulativeAnchorStack(
                config,
                anchorRoute,
                delegate ?? Get.rootController.rootDelegate,
              );
-             ret = _stopAfterNestedOutletAnchor(
-               branch.pickAfterRoute(anchorRoute),
-               anchorRoute,
-             );
            }
-           // Pages participating in the root navigator are rendered by
-           // [GetDelegate.build]; rendering them here as well would mount
-           // them twice.
-           ret = ret.takeWhile(
-             (page) => page.participatesInRootNavigator != true,
-           );
            if (filterPages != null) {
              ret = filterPages(ret);
            }
@@ -141,48 +143,66 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
        );
 
   /// Resolves the page rendered for an outlet's `initialRoute` through the
-  /// synchronously-resolvable part of the middleware pipeline.
+  /// middleware pipeline.
   ///
   /// The router delegate never navigates to an outlet's `initialRoute` (the
   /// page is rendered directly whenever the outlet picks no pages), so
   /// [GetMiddleware.redirectDelegate] would otherwise never run for it.
   /// Middlewares run in ascending [GetMiddleware.priority] order, mirroring
   /// the delegate's own pipeline. Because this resolution happens during
-  /// build, asynchronous [GetMiddleware.redirectDelegate] results cannot be
-  /// awaited and keep the original target; synchronous results — including
-  /// the default bridge to [GetMiddleware.redirect] — are honored. A
-  /// middleware stopping the navigation (returning `null`) resolves to
-  /// `null`, which callers degrade to [GetDelegate.notFoundRoute].
+  /// build, only synchronous [GetMiddleware.redirectDelegate] results —
+  /// including the default bridge to [GetMiddleware.redirect] — can be
+  /// honored directly. When a middleware returns a `Future`, the full
+  /// asynchronous pipeline is resolved out-of-band through
+  /// [GetDelegate.resolveOutletInitialPageAsync], which rebuilds the outlet
+  /// once the result is known (#1978); until then the synchronously
+  /// resolved page is rendered. A middleware stopping the navigation
+  /// (returning `null`) resolves to `null`, which callers degrade to
+  /// [GetDelegate.notFoundRoute].
   static GetPage? _resolveInitialPage(
     GetDelegate delegate,
     String initialRoute,
   ) {
-    var decoder = delegate.matchRoute(
-      initialRoute,
-      arguments: PageSettings(Uri.parse(initialRoute)),
-    );
-    final visited = <String>{};
-    while (true) {
-      final page = decoder.route;
-      if (page == null) return null;
-      // A middleware redirect cycle can never settle; degrade to the
-      // not-found page instead of looping forever during build.
-      if (!visited.add(page.name)) return null;
-      final middlewares = List.of(page.middlewares)
-        ..sort((a, b) => a.priority.compareTo(b.priority));
-      RouteDecoder? next;
-      for (final middleware in middlewares) {
-        final resolved = middleware.redirectDelegate(decoder);
-        if (resolved is Future) continue;
-        if (resolved == null) return null;
-        if (resolved.pageSettings?.name != decoder.pageSettings?.name) {
-          next = resolved;
-          break;
+    var sawAsync = false;
+    GetPage? resolveSync() {
+      var decoder = delegate.matchRoute(
+        initialRoute,
+        arguments: PageSettings(Uri.parse(initialRoute)),
+      );
+      final visited = <String>{};
+      while (true) {
+        final page = decoder.route;
+        if (page == null) return null;
+        // A middleware redirect cycle can never settle; degrade to the
+        // not-found page instead of looping forever during build.
+        if (!visited.add(page.name)) return null;
+        final middlewares = List.of(page.middlewares)
+          ..sort((a, b) => a.priority.compareTo(b.priority));
+        RouteDecoder? next;
+        for (final middleware in middlewares) {
+          final resolved = middleware.redirectDelegate(decoder);
+          if (resolved is Future) {
+            sawAsync = true;
+            continue;
+          }
+          if (resolved == null) return null;
+          if (resolved.pageSettings?.name != decoder.pageSettings?.name) {
+            next = resolved;
+            break;
+          }
         }
+        if (next == null) return page;
+        decoder = next;
       }
-      if (next == null) return page;
-      decoder = next;
     }
+
+    final syncPage = resolveSync();
+    if (!sawAsync) return syncPage;
+    final asyncResolution = delegate.resolveOutletInitialPageAsync(
+      initialRoute,
+    );
+    if (asyncResolution.resolved) return asyncResolution.page;
+    return syncPage;
   }
 
   GetRouterOutlet.pickPages({
@@ -202,24 +222,48 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
            ].whereType<GetPage>();
 
            if (pageRes.isNotEmpty) {
+             GetNavigator buildNavigator(GlobalKey<NavigatorState>? key) {
+               return GetNavigator(
+                 restorationScopeId: restorationScopeId,
+                 // Removals performed imperatively on this navigator (an
+                 // iOS back-swipe gesture completing, Navigator.pop, an
+                 // in-outlet AppBar back button) must pop the matching
+                 // history entry, or the popped page would be resurrected
+                 // by the next declarative rebuild (#2107). Removals
+                 // caused by page-list updates never reach the callback.
+                 onDidRemovePage:
+                     onDidRemovePage ?? rDelegate.didRemoveOutletPage,
+                 pages: pageRes.toList(),
+                 key: key,
+                 // A pop through the router delegate can surface here as a
+                 // page replacement instead of a removal (e.g. a
+                 // PopMode.page pop shortening a deep-linked tree branch);
+                 // the pop-aware delegate plays the leaving page's reverse
+                 // transition instead of a forward push animation (#1883).
+                 transitionDelegate: GetTransitionDelegate<dynamic>(
+                   isPopNavigation: () => rDelegate.lastNavigationWasPop,
+                 ),
+               );
+             }
+
              return InheritedNavigator(
                navigatorKey:
                    navigatorKey ?? Get.rootController.rootDelegate.navigatorKey,
                child: _OutletHeroControllerScope(
-                 child: GetNavigator(
-                   restorationScopeId: restorationScopeId,
-                   onDidRemovePage: onDidRemovePage ?? _ignoreDidRemovePage,
-                   pages: pageRes.toList(),
-                   key: navigatorKey,
-                   // An outlet renders only the current tree branch, so a
-                   // pop through the router delegate usually surfaces here
-                   // as a page replacement; the pop-aware delegate plays
-                   // the leaving page's reverse transition instead of a
-                   // forward push animation (#1883).
-                   transitionDelegate: GetTransitionDelegate<dynamic>(
-                     isPopNavigation: () => rDelegate.lastNavigationWasPop,
-                   ),
-                 ),
+                 // Two outlets for the same anchor can be mounted at once
+                 // (e.g. duplicate shell pages stacked in the root
+                 // navigator, or an old shell animating out); attaching the
+                 // shared nested-delegate GlobalKey to both navigators
+                 // would crash with "Multiple widgets used the same
+                 // GlobalKey" (#2742). The key scope hands the shared key
+                 // to the most recently mounted outlet only.
+                 child: navigatorKey == null
+                     ? buildNavigator(null)
+                     : _SharedNavigatorKeyScope(
+                         sharedKey: navigatorKey,
+                         builder: (context, effectiveKey) =>
+                             buildNavigator(effectiveKey),
+                       ),
                ),
              );
            }
@@ -242,34 +286,69 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
        );
 }
 
-/// Default `onDidRemovePage` handler for nested outlet navigators.
+/// The page stack an outlet anchored at [anchorRoute] renders, accumulated
+/// across [delegate]'s navigation history (#2107).
 ///
-/// The Navigator pages API requires a removal callback; a nested outlet's
-/// page stack is derived declaratively from the router delegate's history,
-/// so a page leaving the picked stack needs no bookkeeping here — the
-/// delegate already reflects the change that caused the removal.
-void _ignoreDidRemovePage(Page<dynamic> page) {}
-
-/// The tree branch an outlet anchored at [anchorRoute] should render from.
+/// Every history entry whose tree branch contains the anchor contributes
+/// the pages the outlet would render for that entry alone: the branch pages
+/// below the anchor, truncated after the first page that anchors a deeper
+/// outlet (its descendants are hosted by that outlet) and at the first page
+/// participating in the root navigator (rendered by [GetDelegate.build];
+/// rendering it here as well would mount it twice). The contributions are
+/// stacked in history order, so navigating between sibling routes inside
+/// the outlet keeps the previous sibling mounted beneath the new one (state
+/// retention) and hands the nested navigator a real stack — a route that is
+/// alone in its navigator can never be popped by the iOS back-swipe
+/// gesture, and a sibling pop becomes a genuine removal with its reverse
+/// transition instead of a page replacement. Entries whose branch does not
+/// contain the anchor (unrelated routes sitting on top of the history) are
+/// skipped, keeping the outlet's stack alive while they are shown (#3336).
 ///
-/// Prefers the deepest entry of [delegate]'s navigation history whose
-/// branch contains the anchor, so that a nested outlet keeps showing its
-/// current child while an unrelated route (e.g. a sibling top-level page)
-/// sits on top of the history. Falls back to [config]'s branch when no
-/// history entry contains the anchor.
-List<GetPage> _anchorBranch(
+/// Walking backward from the newest matching entry, the accumulation stops
+/// at the first entry that contributes no pages (the anchor itself was
+/// (re)entered, resetting the outlet towards its initial route) or whose
+/// contribution overlaps a page already stacked (a newer entry re-visits a
+/// page an older entry keeps below its own leaf, e.g. `/products` pushed
+/// while `/products/1` is in the history): stacking past either would
+/// duplicate page keys — the navigator requires them unique — or resurrect
+/// pages above the current route. Older entries therefore never override
+/// the pages the newest entries put on top, and each page key is picked at
+/// most once.
+///
+/// Falls back to [config]'s branch when no history entry contains the
+/// anchor.
+List<GetPage> _cumulativeAnchorStack(
   RouteDecoder config,
   String anchorRoute,
   GetDelegate delegate,
 ) {
+  Iterable<GetPage> contributionOf(List<GetPage> branch) {
+    return _stopAfterNestedOutletAnchor(
+      branch.pickAfterRoute(anchorRoute),
+      anchorRoute,
+    ).takeWhile((page) => page.participatesInRootNavigator != true);
+  }
+
+  final stack = <GetPage>[];
+  final stackedKeys = <LocalKey?>{};
+  var anchorFound = false;
   final activePages = delegate.activePages;
   for (var i = activePages.length - 1; i >= 0; i--) {
     final branch = activePages[i].currentTreeBranch;
-    if (branch.any((page) => page.name == anchorRoute)) {
-      return branch;
+    if (!branch.any((page) => page.name == anchorRoute)) continue;
+    anchorFound = true;
+    final contribution = contributionOf(branch).toList();
+    if (contribution.isEmpty ||
+        contribution.any((page) => stackedKeys.contains(page.key))) {
+      break;
     }
+    stack.insertAll(0, contribution);
+    stackedKeys.addAll(contribution.map((page) => page.key));
   }
-  return config.currentTreeBranch;
+  if (!anchorFound) {
+    return contributionOf(config.currentTreeBranch).toList();
+  }
+  return stack;
 }
 
 /// Truncates [pages] after the first page that itself anchors a deeper
@@ -292,6 +371,130 @@ Iterable<GetPage> _stopAfterNestedOutletAnchor(
     }
   }
   return result;
+}
+
+/// Attaches a shared navigator [GlobalKey] to exactly one mounted outlet
+/// at a time (#2742).
+///
+/// Every [GetRouterOutlet] anchored at the same route receives the same
+/// nested-delegate GlobalKey, and two such outlets can legitimately be
+/// mounted at once — duplicate shell pages stacked in the root navigator,
+/// or an outgoing shell still animating while its replacement enters. A
+/// GlobalKey may only be attached to one widget per frame, so each scope
+/// registers per shared key and only the most recently mounted registrant
+/// builds with it; the others fall back to a State-owned key.
+///
+/// Ownership changes are applied in a post-frame callback so the shared
+/// key is never claimed by a new location while the previous holder could
+/// still claim it in the same frame: on a handover both scopes rebuild
+/// together (the old one releasing the key, the new one adopting it), and
+/// on the owner's disposal the key is re-adopted only after the owner's
+/// element has unmounted.
+class _SharedNavigatorKeyScope extends StatefulWidget {
+  const _SharedNavigatorKeyScope({
+    required this.sharedKey,
+    required this.builder,
+  });
+
+  final GlobalKey<NavigatorState> sharedKey;
+  final Widget Function(BuildContext context, GlobalKey<NavigatorState> key)
+  builder;
+
+  @override
+  State<_SharedNavigatorKeyScope> createState() =>
+      _SharedNavigatorKeyScopeState();
+}
+
+class _SharedNavigatorKeyScopeState extends State<_SharedNavigatorKeyScope> {
+  /// Mounted scopes per shared key, oldest first; the last entry owns the
+  /// key. Entries remove themselves on disposal, so the map cannot leak.
+  static final Map<GlobalKey<NavigatorState>, List<_SharedNavigatorKeyScopeState>>
+  _registrants = {};
+
+  /// Fallback key for the frames in which this scope does not hold the
+  /// shared key; State-owned so the navigator it names is not remounted on
+  /// every rebuild.
+  late final GlobalKey<NavigatorState> _fallbackKey =
+      GlobalKey<NavigatorState>();
+
+  /// Whether the shared key has been released to this scope. Owning the
+  /// key ([_isOwner]) is not enough: a freshly mounted scope must not
+  /// attach it while the previous holder's navigator element is still live.
+  bool _sharedKeyReleased = false;
+
+  bool get _isOwner {
+    final registrants = _registrants[widget.sharedKey];
+    return registrants != null &&
+        registrants.isNotEmpty &&
+        identical(registrants.last, this);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _register(widget.sharedKey);
+  }
+
+  void _register(GlobalKey<NavigatorState> key) {
+    final registrants = _registrants.putIfAbsent(key, () => []);
+    final previous = registrants.isEmpty ? null : registrants.last;
+    registrants.add(this);
+    if (previous == null) {
+      _sharedKeyReleased = true;
+      return;
+    }
+    // Handover: after this frame the previous holder rebuilds without the
+    // key and this scope rebuilds with it. Both rebuild within the same
+    // later frame, which is the supported way to move a GlobalKey.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (previous.mounted) previous.setState(() {});
+      if (mounted && _isOwner) setState(() => _sharedKeyReleased = true);
+    });
+  }
+
+  void _unregister(GlobalKey<NavigatorState> key) {
+    final registrants = _registrants[key];
+    if (registrants == null) return;
+    final wasOwner =
+        registrants.isNotEmpty && identical(registrants.last, this);
+    registrants.remove(this);
+    if (registrants.isEmpty) {
+      _registrants.remove(key);
+      return;
+    }
+    if (!wasOwner) return;
+    final next = registrants.last;
+    // Re-adopt after this frame, once the disposed holder's element is gone.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (next.mounted && next._isOwner) {
+        next.setState(() => next._sharedKeyReleased = true);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SharedNavigatorKeyScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sharedKey != widget.sharedKey) {
+      _unregister(oldWidget.sharedKey);
+      _sharedKeyReleased = false;
+      _register(widget.sharedKey);
+    }
+  }
+
+  @override
+  void dispose() {
+    _unregister(widget.sharedKey);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final key = _isOwner && _sharedKeyReleased
+        ? widget.sharedKey
+        : _fallbackKey;
+    return widget.builder(context, key);
+  }
 }
 
 /// Hosts a persistent [HeroController] scoped to a nested outlet navigator.

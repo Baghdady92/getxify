@@ -1301,6 +1301,138 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     if (completer?.isCompleted == false) completer!.complete(null);
     notifyListeners();
   }
+
+  /// Whether [dispose] has run; guards the out-of-band initial-page
+  /// resolutions of [resolveOutletInitialPageAsync], which complete after
+  /// the frame that scheduled them and must not touch a disposed notifier.
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// State of the asynchronous middleware resolutions started by
+  /// [resolveOutletInitialPageAsync], per outlet initial route.
+  final Map<String, _OutletInitialPageResolution> _outletInitialResolutions =
+      {};
+
+  /// The result of the full — asynchronous — middleware pipeline for an
+  /// outlet's [initialRoute], starting or refreshing that resolution in the
+  /// background (#1978).
+  ///
+  /// [GetRouterOutlet] resolves the page rendered for its `initialRoute`
+  /// during build, where only synchronous [GetMiddleware.redirectDelegate]
+  /// results can be honored; a middleware returning a `Future` would be
+  /// ignored entirely. When the outlet's synchronous resolution encounters
+  /// such a middleware it calls this method: the full pipeline
+  /// ([runMiddleware]) is scheduled after the current frame (notifying
+  /// listeners mid-build is illegal) and `resolved: false` is returned, so
+  /// the outlet keeps showing the synchronously resolved page meanwhile.
+  /// Once the pipeline completes, listeners are notified — rebuilding the
+  /// outlets — whenever the outcome differs from the previously resolved
+  /// one, and later calls return `resolved: true` with the resolved [page]
+  /// (`null` when a middleware stopped the navigation, which callers
+  /// degrade to [notFoundRoute]).
+  ///
+  /// Each call also refreshes the resolution (at most one runs at a time),
+  /// mirroring how the synchronous middleware surface re-runs on every
+  /// build in which the outlet is empty, so middleware decision changes
+  /// are picked up. The refresh only notifies when the resolved page
+  /// changed, so stable decisions cannot rebuild in a loop.
+  ({bool resolved, GetPage? page}) resolveOutletInitialPageAsync(
+    String initialRoute,
+  ) {
+    final resolution = _outletInitialResolutions.putIfAbsent(
+      initialRoute,
+      _OutletInitialPageResolution.new,
+    );
+    if (!resolution.inFlight) {
+      resolution.inFlight = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          if (_disposed) return;
+          final decoder = matchRoute(
+            initialRoute,
+            arguments: PageSettings(Uri.parse(initialRoute)),
+          );
+          final result = await runMiddleware(decoder);
+          if (_disposed) return;
+          final page = result?.route;
+          final changed =
+              !resolution.resolved || resolution.page?.key != page?.key;
+          resolution.resolved = true;
+          resolution.page = page;
+          if (changed) notifyListeners();
+        } finally {
+          resolution.inFlight = false;
+        }
+      });
+    }
+    return (resolved: resolution.resolved, page: resolution.page);
+  }
+
+  /// Reflects a page removal performed imperatively on a nested
+  /// [GetRouterOutlet] navigator back into this delegate's history (#2107).
+  ///
+  /// The outlet's page stack is derived declaratively from [activePages],
+  /// and the framework only reports removals that did *not* originate from
+  /// a page-list update — an iOS back-swipe gesture completing (the
+  /// gesture's dragEnd calls [NavigatorState.pop]), a [Navigator.pop] on
+  /// the outlet navigator, an in-outlet `AppBar` back button, ... Without
+  /// this bookkeeping such a pop leaves the history untouched, so the URL
+  /// stays stale and the next rebuild resurrects the popped page.
+  ///
+  /// Mirroring [_onDidRemoveVisualRoute], the last history entry whose leaf
+  /// route is the removed [page] is popped and its route completer is
+  /// completed, resolving the navigation future that pushed it. Removals
+  /// whose entry has already left the history (a declarative [back] racing
+  /// this callback) are ignored, guarding against feedback loops with
+  /// declarative rebuilds. When the matching entry is the *only* history
+  /// entry (a deep link into a nested branch), the entry cannot be removed
+  /// without blanking the app: its tree branch is shortened instead,
+  /// mirroring [PopMode.page] semantics, so the outlet reveals the parent
+  /// page. Like the root handler — and unlike [popRoute] — no middleware
+  /// runs: the route has already been popped visually.
+  void didRemoveOutletPage(Page<dynamic> page) {
+    final index = _activePages.lastIndexWhere(
+      (e) => identical(e.route, page) || e.route == page,
+    );
+    if (index < 0) return;
+    final entry = _activePages[index];
+    if (_activePages.length > 1) {
+      _activePages.removeAt(index);
+    } else {
+      final branch = entry.currentTreeBranch;
+      // The only page of the only entry cannot be popped (the navigator
+      // itself should never allow it: such a route is its first route).
+      if (branch.length < 2) return;
+      _activePages[index] = RouteDecoder(
+        branch.sublist(0, branch.length - 1),
+        null,
+      );
+    }
+    final completer = entry.route?.completer;
+    if (completer?.isCompleted == false) completer!.complete(null);
+    notifyListeners();
+  }
+}
+
+/// State of one asynchronous outlet initial-route resolution
+/// (see [GetDelegate.resolveOutletInitialPageAsync]).
+class _OutletInitialPageResolution {
+  /// Whether a pipeline run is currently in flight (throttles refreshes).
+  bool inFlight = false;
+
+  /// Whether at least one pipeline run has completed, making [page]
+  /// meaningful (`page == null` alone cannot distinguish "not yet
+  /// resolved" from "resolved to a stopped navigation").
+  bool resolved = false;
+
+  /// The page the pipeline last resolved to, or `null` for a stopped
+  /// navigation.
+  GetPage? page;
 }
 
 /// Reports the [PageSettings] of the page whose subtree is being built, so
