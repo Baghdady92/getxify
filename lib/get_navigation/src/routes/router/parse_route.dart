@@ -2,7 +2,7 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../getxify.dart';
+import '../../../../getxify.dart';
 
 @immutable
 class RouteDecoder {

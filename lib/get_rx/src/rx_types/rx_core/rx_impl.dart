@@ -347,7 +347,7 @@ extension RxT<T extends Object> on T {
 
 /// This method replaces the old `.obs` extension to avoid conflicts with
 /// Dart 3 features. T will be inferred by contextual type inference.
-extension RxTnew on Object {
+extension RxTNew on Object {
   /// Returns a `Rx` instance with [this] `T` as initial value.
   Rx<T> obs<T>() => Rx<T>(this as T);
 }

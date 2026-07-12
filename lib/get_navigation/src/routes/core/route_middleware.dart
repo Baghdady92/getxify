@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 
-import '../../../getxify.dart';
+import '../../../../getxify.dart';
 
 /// The Page Middlewares.
 /// The Functions will be called in this order
@@ -87,7 +87,7 @@ abstract class GetMiddleware {
   /// {@end-tool}
   GetPage? onPageCalled(GetPage? page) => page;
 
-  /// This function will be called right before the [BindingsInterface] are initialize.
+  /// This function will be called right before the [BindingsInterface] are initialized.
   /// Here you can change [BindingsInterface] for this page
   /// {@tool snippet}
   /// ```dart
@@ -102,7 +102,7 @@ abstract class GetMiddleware {
   /// {@end-tool}
   List<R>? onBindingsStart<R>(List<R>? bindings) => bindings;
 
-  /// This function will be called right after the [BindingsInterface] are initialize.
+  /// This function will be called right after the [BindingsInterface] are initialized.
   GetPageBuilder? onPageBuildStart(GetPageBuilder? page) => page;
 
   /// This function will be called right after the
@@ -194,7 +194,7 @@ class PageRedirect {
   /// parameters added by a previous redirect) visible to middlewares.
   static Map<String, String>? resolvingParameters;
 
-  // redirect all pages that needes redirecting
+  // redirect all pages that needs redirecting
   GetPageRoute<T> getPageToRoute<T>(
     GetPage rou,
     GetPage? unk,

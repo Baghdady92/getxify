@@ -5,7 +5,7 @@ import '../../../get_navigation.dart';
 import '../../dialog/dialog_route.dart';
 import '../../router_report.dart';
 
-/// Extracts the name of a route based on it's instance type
+/// Extracts the name of a route based on its instance type
 /// or null if not possible.
 String? _extractRouteName(Route? route) {
   if (route?.settings.name != null) {

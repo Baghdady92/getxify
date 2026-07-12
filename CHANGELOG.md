@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Upstream Sync
+
+- **Merged upstream getxify 3.0.0** - Adopted the restructured `lib/get_navigation/src/routes/` layout (`core/`, `router/`, `transitions/` subdirectories) and the naming cleanups (`_singletons`, `GetInstanceExt`, `RxTNew`); all of this fork's fixes are preserved on top. Upstream 3.0.0's functional changes were already present in 4.0.0.
+
 ### Upstream Issue Fixes — Round 4
 
 A final sweep over the remaining screened backlog candidates fixed 34 more issues (all with regression tests), including the last deferred structural item:
@@ -205,6 +209,18 @@ Three long-standing structural defects that earlier rounds deferred, plus intern
 - **Internal cleanups** - Shared `GetTickerProvider` interface unifies TickerMode forwarding across `GetBuilder`/`Bind`/`GetX`; the bottom-sheet MaterialLocalizations fallback moved into `GetModalBottomSheetRoute.buildPage` (also fixing direct route users under Cupertino apps); overlay close loops resolve the navigator's top route once per iteration and `Get.close()` evaluates its predicates lazily; centralized routing-initialization guards; removed dead code
 
 Known remaining limitation: the iOS swipe-back gesture still cannot pop between sibling routes inside a `GetRouterOutlet` (getx#2107) — it requires cumulative history-derived outlet stacks, a state-retention semantics change documented for future work.
+
+---
+
+## 3.0.0
+
+_Upstream (Aniketkhote/getxify) release, merged into this fork after 4.0.0._
+
+### Code Quality Improvements
+
+- **Restructured navigation routes** - Reorganized the flat `lib/get_navigation/src/routes/` directory into three structured subdirectories (`transitions/`, `router/`, and `core/`) to improve codebase organization and readability.
+- **Refactored naming conventions** - Renamed the legacy truncated private map `_singl` to `_singletons` and the `Inst` extension to `GetInstanceExt` in `extension_instance.dart`. Renamed the `RxTnew` extension to `RxTNew` in `rx_impl.dart` to adhere to Dart's UpperCamelCase style guidelines.
+- Also included code-quality and bug fixes that shipped independently in this fork's 4.0.0 (RxList parameter naming, RxSet/RxMap factory constructors, RxnString null safety, navigation-extension cleanup, and the `closeAllDialogsAndBottomSheets` condition fix).
 
 ---
 

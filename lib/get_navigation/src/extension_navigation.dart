@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:getxify/get_navigation/src/routes/test_kit.dart';
+import 'package:getxify/get_navigation/src/routes/core/test_kit.dart';
 
 import '../../getxify.dart';
 import 'dialog/dialog_route.dart';

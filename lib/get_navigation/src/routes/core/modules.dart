@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../get_core/get_core.dart';
-import '../../../get_instance/get_instance.dart';
-import '../router_report.dart';
+import '../../../../get_core/get_core.dart';
+import '../../../../get_instance/get_instance.dart';
+import '../../router_report.dart';
 
 class Dependencies {
   void lazyPut<S>(
