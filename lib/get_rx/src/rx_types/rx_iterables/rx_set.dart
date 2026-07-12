@@ -130,22 +130,40 @@ extension SetExtension<E> on Set<E> {
   }
 
   /// Replaces all existing items of this set with [item]
+  ///
+  /// On an [RxSet] the backing set is replaced with a fresh mutable set
+  /// rather than mutated in place, so this works even when the set was
+  /// created from an unmodifiable source (e.g. `const {}` or
+  /// `Set.unmodifiable`), and listeners are notified exactly once.
   void assign(E item) {
     if (this is RxSet) {
-      (this as RxSet).value.clear();
+      final rx = this as RxSet;
+      // toSet() preserves the backing set's runtime element type while
+      // always producing a mutable copy.
+      rx.value = rx.value.toSet()
+        ..clear()
+        ..add(item);
     } else {
       clear();
+      add(item);
     }
-    add(item);
   }
 
   /// Replaces all existing items of this set with [items]
+  ///
+  /// On an [RxSet] the backing set is replaced with a fresh mutable set
+  /// rather than mutated in place, so this works even when the set was
+  /// created from an unmodifiable source (e.g. `const {}` or
+  /// `Set.unmodifiable`), and listeners are notified exactly once.
   void assignAll(Iterable<E> items) {
     if (this is RxSet) {
-      (this as RxSet).value.clear();
+      final rx = this as RxSet;
+      rx.value = rx.value.toSet()
+        ..clear()
+        ..addAll(items);
     } else {
       clear();
+      addAll(items);
     }
-    addAll(items);
   }
 }

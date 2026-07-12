@@ -4,6 +4,10 @@
 
 - **Merged upstream getxify 3.0.0** - Adopted the restructured `lib/get_navigation/src/routes/` layout (`core/`, `router/`, `transitions/` subdirectories) and the naming cleanups (`_singletons`, `GetInstanceExt`, `RxTNew`); all of this fork's fixes are preserved on top. Upstream 3.0.0's functional changes were already present in 4.0.0.
 
+### Bug Fixes
+
+- **`assign`/`assignAll` no longer require a growable backing collection** - `RxList`/`RxSet`/`RxMap` created from fixed-length or unmodifiable sources (e.g. `List.empty().obs`, `const [].obs`, `Set.unmodifiable(...).obs`) previously crashed with "Cannot clear a fixed-length list" when assigned; the backing collection is now replaced with a fresh mutable copy (preserving its runtime element type), listeners are notified exactly once, and the collection is fully mutable afterwards. `Map.assignAll` also no longer emits a redundant second notification.
+
 ### Upstream Issue Fixes — Round 4
 
 A final sweep over the remaining screened backlog candidates fixed 34 more issues (all with regression tests), including the last deferred structural item:

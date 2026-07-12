@@ -202,22 +202,42 @@ extension ListExtension<E> on List<E> {
   }
 
   /// Replaces all existing items of this list with [item]
+  ///
+  /// On an [RxList] the backing list is replaced with a fresh growable
+  /// list rather than mutated in place, so this works even when the list
+  /// was created from a fixed-length or unmodifiable source (e.g.
+  /// `List.empty().obs` or `const [].obs`), and listeners are notified
+  /// exactly once.
   void assign(E item) {
     if (this is RxList) {
-      (this as RxList).value.clear();
+      final rx = this as RxList;
+      // toList() preserves the backing list's runtime element type while
+      // always producing a growable, mutable copy.
+      rx.value = rx.value.toList()
+        ..clear()
+        ..add(item);
     } else {
       clear();
+      add(item);
     }
-    add(item);
   }
 
   /// Replaces all existing items of this list with [items]
+  ///
+  /// On an [RxList] the backing list is replaced with a fresh growable
+  /// list rather than mutated in place, so this works even when the list
+  /// was created from a fixed-length or unmodifiable source (e.g.
+  /// `List.empty().obs` or `const [].obs`), and listeners are notified
+  /// exactly once.
   void assignAll(Iterable<E> items) {
     if (this is RxList) {
-      (this as RxList).value.clear();
+      final rx = this as RxList;
+      rx.value = rx.value.toList()
+        ..clear()
+        ..addAll(items);
     } else {
       clear();
+      addAll(items);
     }
-    addAll(items);
   }
 }
