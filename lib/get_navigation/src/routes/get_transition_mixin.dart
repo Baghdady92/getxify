@@ -150,14 +150,19 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
       },
     );
 
+    final dragAreaWidth = _dragAreaWidth(context);
     return Stack(
       fit: StackFit.passthrough,
       children: [
         widget.child,
-        if (widget.limitedSwipe)
+        if (widget.limitedSwipe && dragAreaWidth.isFinite)
           PositionedDirectional(
-            start: widget.initialOffset,
-            width: _dragAreaWidth(context),
+            // A flipped route exits towards the edge it entered from, so its
+            // back drag starts at the trailing edge instead of the leading
+            // one.
+            start: widget.flipDirection ? null : widget.initialOffset,
+            end: widget.flipDirection ? widget.initialOffset : null,
+            width: dragAreaWidth,
             top: 0,
             bottom: 0,
             child: gestureDetector,
@@ -171,7 +176,10 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
   double _dragAreaWidth(BuildContext context) {
     // For devices with notches, the drag area needs to be larger on the side
     // that has the notch.
-    final dragAreaWidth = Directionality.of(context) == TextDirection.ltr
+    final atPhysicalLeft =
+        (Directionality.of(context) == TextDirection.ltr) !=
+        widget.flipDirection;
+    final dragAreaWidth = atPhysicalLeft
         ? context.mediaQuery.padding.left
         : context.mediaQuery.padding.right;
     return max(dragAreaWidth, widget.gestureWidth);
@@ -362,23 +370,43 @@ Cannot read the previousTitle for a route that has not yet been installed''');
       animation,
       secondaryAnimation,
       child,
-      limitedSwipe: gestureWidth != null,
+      limitedSwipe: _limitedSwipe,
     );
+  }
+
+  /// Whether the back gesture is only accepted near the edge the page
+  /// entered from, mirroring the native iOS edge swipe.
+  ///
+  /// A route that explicitly opts into the pop gesture with
+  /// `popGesture: true` keeps the historical full-screen swipe area.
+  /// Providing a [gestureWidth] always bounds the area to the returned
+  /// width; returning `double.infinity` restores full-screen detection.
+  bool get _limitedSwipe {
+    if (gestureWidth != null) return true;
+    final route = this;
+    return route is! GetPageRoute<T> || route.popGesture != true;
   }
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
     // Don't perform outgoing animation if the next route is a
-    // fullscreen dialog.
+    // fullscreen dialog, or slides in from the bottom like one
+    // (Transition.downToUp); moving the outgoing page would reveal the
+    // navigator background behind both pages.
     return (nextRoute is GetPageRouteTransitionMixin &&
             !nextRoute.fullscreenDialog &&
-            nextRoute.showCupertinoParallax) ||
+            nextRoute.showCupertinoParallax &&
+            !_slidesFromBottom(nextRoute)) ||
         (nextRoute is MaterialRouteTransitionMixin &&
             !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoRouteTransitionMixin &&
             !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoSheetRoute && !nextRoute.fullscreenDialog);
   }
+
+  static bool _slidesFromBottom(GetPageRouteTransitionMixin<dynamic> route) =>
+      route is GetPageRoute &&
+      (route.transition ?? Get.defaultTransition) == Transition.downToUp;
 
   @override
   void didChangePrevious(Route<dynamic>? previousRoute) {
@@ -745,6 +773,27 @@ Cannot read the previousTitle for a route that has not yet been installed''');
 
         case Transition.native:
           return Theme.of(context).pageTransitionsTheme.buildTransitions(
+            route,
+            context,
+            iosAnimation,
+            secondaryAnimation,
+            GetBackGestureDetector<T>(
+              popGestureEnable: () =>
+                  _isPopGestureEnabled(route, canSwipe(route), context),
+              onStartPopGesture: () {
+                assert(_isPopGestureEnabled(route, canSwipe(route), context));
+                return _startPopGesture(route);
+              },
+              limitedSwipe: limitedSwipe,
+              gestureWidth:
+                  route.gestureWidth?.call(context) ?? _kBackGestureWidth,
+              initialOffset: initialOffset,
+              child: child,
+            ),
+          );
+
+        case Transition.predictiveBack:
+          return const PredictiveBackPageTransitionsBuilder().buildTransitions(
             route,
             context,
             iosAnimation,

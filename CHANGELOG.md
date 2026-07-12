@@ -1,3 +1,52 @@
+## Unreleased
+
+### Upstream Issue Fixes — Round 4
+
+A final sweep over the remaining screened backlog candidates fixed 34 more issues (all with regression tests), including the last deferred structural item:
+
+#### Nested Navigation (structural)
+
+- **iOS swipe-back works between sibling routes inside `GetRouterOutlet`** - Outlets now stack the sibling pages of every history entry sharing their anchor (previous siblings stay mounted, retaining state), and imperative pops on the outlet navigator (back-swipe gesture, `Navigator.pop`, AppBar back) are reflected into the navigation history (getx#2107)
+- **Fixed 'Multiple widgets used the same GlobalKey' with duplicate same-anchor outlets** - The shared nested-delegate key attaches only to the most recently mounted outlet (getx#2742)
+- **Async `redirectDelegate` results are honored for an outlet's `initialRoute`** - Resolved post-frame with change detection so stable decisions cannot rebuild in a loop (getx#1978)
+
+#### Navigation & Routing
+
+- **The iOS back-swipe now starts only near the leading edge by default** - matching native iOS, so it no longer hijacks sliders/carousels; `popGesture: true` keeps the historical full-screen area and `gestureWidth: (_) => double.infinity` restores it explicitly (getx#3209)
+- **Fixed `offAllNamed` to the surviving bottom route keeping stale content** - The page is rebuilt and its bindings/controllers recreated (getx#2899)
+- **Fixed the initial Flutter Web URL report pushing an extra history entry** - which activated the browser back button on a plain page load (getx#3266)
+- **`GetMaterialApp` renders its initial route on the first pump in widget tests** - like GetX 4; no extra `pumpAndSettle` needed (getx#3244)
+- **Fixed tear-off route names** - `Get.to(MyPage.new)` no longer generates names polluted with the parameter list (getx#2245)
+- **Fixed `Get.rawRoute` becoming null after `Get.offAllNamed`** (getx#1237)
+- **`Get.back` returns `bool`** - so callers can detect an ignored back navigation (getx#2474)
+- **Descriptive `GetPage` name assert** - states the offending name and the leading-slash requirement (getx#2564)
+- **`Transition.downToUp` no longer reveals a black background** - the outgoing page stays in place, modal-style (getx#1560)
+- **`Transition.circularReveal` radius is computed from the screen size** - fixing clipped corners on iPad Pro 12.9 (getx#3130)
+- **Added `Transition.predictiveBack`** - per-route Android predictive back without configuring `pageTransitionsTheme` (getx#3109)
+- **`transitionDuration` on `GetMaterialApp`/`GetCupertinoApp` is honored** - previously dead config (getx#2503)
+- **Added `customTransition` to `Get.to`/`Get.off`/`Get.offAll`** - imperative navigation can use `CustomTransition` animations (getx#2475)
+- **Added `GetPage.allowSnapshotting`** - disable route-transition snapshotting per page (getx#3282)
+
+#### Dialogs, Sheets & Snackbars
+
+- **Overlays own their arguments and dependencies correctly** - `Get.arguments` returns the overlay's arguments while it is topmost (getx#2122); `Get.bottomSheet` gains `arguments`/`name` (getx#2005); controllers `Get.put` while an overlay is open belong to the page beneath and survive the overlay's dismissal (getx#1969)
+- **Added `canPop` to `Get.defaultDialog`** - block back-gesture dismissal (getx#3184)
+- **Added `transitionBuilder` to `Get.dialog`** - custom dialog animations without `Get.generalDialog` (getx#3127)
+- **Snackbar queue robustness** - closing a still-queued snackbar no longer crashes (getx#2761) or mounts broken overlay state later (getx#2257); `closeCurrentSnackbar`/`cancelAllSnackbars` (and the `Get.` wrappers) gain `withAnimations` (getx#2400)
+- **Snackbar rendering** - RTL icon paddings mirror correctly (getx#3069) and the left bar indicator respects `borderRadius` (getx#2747)
+
+#### State Management, Rx & i18n
+
+- **`GetBuilder`/`Bind` rebinds when its `tag` changes on rebuild** - disposing an autoRemove controller created under the old tag (getx#2232)
+- **Descriptive `BindError` on (type, tag) mismatch** - instead of an opaque null-check crash (getx#2573)
+- **Controllers created inside native `showModalBottomSheet`/`showDialog` builders no longer leak** (getx#2439)
+- **Fixed `RxSet.assign`/`assignAll` notifying twice** - one event with the final contents (getx#2250)
+- **Added `autoPlayOnUpdate` to `GetAnimatedBuilder` and all animation extensions** - declarative replays driven by Obx state (getx#2760)
+- **CLDR plural-category support** - `PluralCase`, pluggable `Get.pluralResolver`, and `trPluralCases`/`trPluralCasesParams` for languages like Arabic and Russian (getx#1855)
+- **Added `restorationScopeId` to `GetMaterialApp`/`GetCupertinoApp`** - enabling app-level state restoration (getx#2144)
+
+---
+
 ## 4.0.0
 
 ### Code Quality Improvements

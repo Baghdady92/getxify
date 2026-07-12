@@ -20,6 +20,7 @@ class FadeInAnimation extends OpacityAnimation {
     super.begin = 0,
     super.end = 1,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   });
 }
 
@@ -35,6 +36,7 @@ class FadeOutAnimation extends OpacityAnimation {
     super.begin = 1,
     super.end = 0,
     super.idleValue = 1,
+    super.autoPlayOnUpdate,
   });
 }
 
@@ -50,6 +52,7 @@ class OpacityAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     required super.idleValue,
+    super.autoPlayOnUpdate,
   }) : super(
          tween: Tween<double>(begin: begin, end: end),
          builder: (context, value, child) {
@@ -70,6 +73,7 @@ class RotateAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) =>
              Transform.rotate(angle: value, child: child),
@@ -89,6 +93,7 @@ class ScaleAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) =>
              Transform.scale(scale: value, child: child),
@@ -109,6 +114,7 @@ class BounceAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) =>
              Transform.scale(scale: 1 + value.abs(), child: child),
@@ -126,6 +132,7 @@ class SpinAnimation extends GetAnimatedBuilder<double> {
     required super.child,
     super.onComplete,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) =>
              Transform.rotate(angle: value * pi / 180.0, child: child),
@@ -145,6 +152,7 @@ class SizeAnimation extends GetAnimatedBuilder<double> {
     super.idleValue = 0,
     required double begin,
     required double end,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) =>
              Transform.scale(scale: value, child: child),
@@ -167,6 +175,7 @@ class BlurAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) => ImageFiltered(
            imageFilter: ImageFilter.blur(sigmaX: value, sigmaY: value),
@@ -188,6 +197,7 @@ class FlipAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) {
            final radians = value * pi;
@@ -213,6 +223,7 @@ class WaveAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) => Transform(
            transform: Matrix4.translationValues(
@@ -238,6 +249,7 @@ class WobbleAnimation extends GetAnimatedBuilder<double> {
     required double begin,
     required double end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) => Transform(
            transform: Matrix4.identity()
@@ -262,6 +274,7 @@ class SlideInLeftAnimation extends SlideAnimation {
     required super.begin,
     required super.end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          offsetBuild: (context, value) =>
              Offset(value * MediaQuery.of(context).size.width, 0),
@@ -280,6 +293,7 @@ class SlideInRightAnimation extends SlideAnimation {
     required super.begin,
     required super.end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          offsetBuild: (context, value) =>
              Offset((1 - value) * MediaQuery.of(context).size.width, 0),
@@ -298,6 +312,7 @@ class SlideInUpAnimation extends SlideAnimation {
     required super.begin,
     required super.end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          offsetBuild: (context, value) =>
              Offset(0, value * MediaQuery.of(context).size.height),
@@ -316,6 +331,7 @@ class SlideInDownAnimation extends SlideAnimation {
     required super.begin,
     required super.end,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          offsetBuild: (context, value) =>
              Offset(0, (1 - value) * MediaQuery.of(context).size.height),
@@ -335,6 +351,7 @@ class SlideAnimation extends GetAnimatedBuilder<double> {
     required OffsetBuilder offsetBuild,
     super.onComplete,
     super.idleValue = 0,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) => Transform.translate(
            offset: offsetBuild(context, value),
@@ -356,6 +373,7 @@ class ColorAnimation extends GetAnimatedBuilder<Color?> {
     required Color begin,
     required Color end,
     Color? idleColor,
+    super.autoPlayOnUpdate,
   }) : super(
          builder: (context, value, child) => ColorFiltered(
            colorFilter: ColorFilter.mode(value!, BlendMode.srcIn),

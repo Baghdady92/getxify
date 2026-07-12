@@ -75,6 +75,12 @@ class GetCupertinoApp extends StatelessWidget {
   final List<Bind> binds;
   final ScrollBehavior? scrollBehavior;
 
+  /// The identifier to use for state restoration of this app.
+  ///
+  /// Forwarded to [CupertinoApp.restorationScopeId]. Providing a non-null
+  /// value enables state restoration for the application.
+  final String? restorationScopeId;
+
   /// Creates a [GetCupertinoApp] instance for a standard GetX application.
   ///
   /// You can use [home] to set the main entry widget, or provide a list of [getPages]
@@ -133,6 +139,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
+    this.restorationScopeId,
   }) : routeInformationProvider = null,
        backButtonDispatcher = null,
        routeInformationParser = null,
@@ -194,6 +201,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.getPages,
     this.navigatorObservers,
     this.unknownRoute,
+    this.restorationScopeId,
   }) : navigatorKey = null,
        onGenerateRoute = null,
        home = null,
@@ -280,6 +288,7 @@ class GetCupertinoApp extends StatelessWidget {
               debugShowCheckedModeBanner: debugShowCheckedModeBanner,
               shortcuts: shortcuts,
               scrollBehavior: scrollBehavior,
+              restorationScopeId: restorationScopeId,
             );
           }
 
@@ -313,6 +322,7 @@ class GetCupertinoApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 )
               : CupertinoApp.router(
                   routerDelegate: controller.config.routerDelegate,
@@ -348,6 +358,7 @@ class GetCupertinoApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 );
         },
       ),

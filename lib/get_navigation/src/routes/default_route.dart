@@ -48,8 +48,14 @@ class GetPageRoute<T> extends PageRoute<T>
   /// functionality for dependency injection and navigation control.
   ///
   /// The [page] or [settings] must be provided.
+  ///
+  /// When [allowSnapshotting] is omitted it is taken from the [GetPage]
+  /// the route was created for (its [settings], for routes created through
+  /// the pages API), so [GetPage.allowSnapshotting] reaches the route
+  /// without extra plumbing.
   GetPageRoute({
     super.settings,
+    this._allowSnapshotting,
     this.transitionDuration = const Duration(milliseconds: 300),
     this.reverseTransitionDuration = const Duration(milliseconds: 300),
     this.opaque = true,
@@ -76,6 +82,19 @@ class GetPageRoute<T> extends PageRoute<T>
     this.bindingOwnerNames,
   }) : bindings = (binding == null) ? bindings : [...bindings, binding],
        _middlewareRunner = MiddlewareRunner(middlewares);
+
+  /// The explicit [PageRoute.allowSnapshotting] override passed to the
+  /// constructor, or `null` to defer to the [GetPage] this route was
+  /// created for (see [allowSnapshotting]).
+  final bool? _allowSnapshotting;
+
+  @override
+  bool get allowSnapshotting {
+    final settings = this.settings;
+    if (_allowSnapshotting != null) return _allowSnapshotting;
+    if (settings is GetPage) return settings.allowSnapshotting;
+    return super.allowSnapshotting;
+  }
 
   @override
   final Duration transitionDuration;

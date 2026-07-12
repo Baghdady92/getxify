@@ -462,12 +462,84 @@ You need to either use message[String], or messageText[Widget] or define a userI
 
   Widget _containerWithoutForm() {
     final iconPadding = widget.padding.left > 16.0 ? widget.padding.left : 0.0;
-    final left = _rowStyle == RowStyle.icon || _rowStyle == RowStyle.all
+    final start = _rowStyle == RowStyle.icon || _rowStyle == RowStyle.all
         ? 4.0
         : widget.padding.left;
-    final right = _rowStyle == RowStyle.action || _rowStyle == RowStyle.all
+    final end = _rowStyle == RowStyle.action || _rowStyle == RowStyle.all
         ? 8.0
         : widget.padding.right;
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        widget.showProgressIndicator
+            ? LinearProgressIndicator(
+                value: widget.progressIndicatorController != null
+                    ? _progressAnimation.value
+                    : null,
+                backgroundColor: widget.progressIndicatorBackgroundColor,
+                valueColor: widget.progressIndicatorValueColor,
+              )
+            : _emptyWidget,
+        Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            _buildLeftBarIndicator(),
+            if (_rowStyle == RowStyle.icon || _rowStyle == RowStyle.all)
+              ConstrainedBox(
+                constraints: BoxConstraints.tightFor(width: 42.0 + iconPadding),
+                child: _getIcon(),
+              ),
+            Expanded(
+              flex: 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (_isTitlePresent)
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(
+                        top: widget.padding.top,
+                        start: start,
+                        end: end,
+                      ),
+                      child: widget.titleText ??
+                          Text(
+                            widget.title ?? "",
+                            style: const TextStyle(
+                              fontSize: 16.0,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                    )
+                  else
+                    _emptyWidget,
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(
+                      top: _messageTopMargin,
+                      start: start,
+                      end: end,
+                      bottom: widget.padding.bottom,
+                    ),
+                    child: widget.messageText ??
+                        Text(
+                          widget.message ?? "",
+                          style: const TextStyle(
+                              fontSize: 14.0, color: Colors.white),
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            if (_rowStyle == RowStyle.action || _rowStyle == RowStyle.all)
+              Padding(
+                padding: EdgeInsetsDirectional.only(end: buttonPadding),
+                child: widget.mainButton,
+              ),
+          ],
+        ),
+      ],
+    );
     return Container(
       key: _backgroundBoxKey,
       constraints: widget.maxWidth != null
@@ -482,79 +554,12 @@ You need to either use message[String], or messageText[Widget] or define a userI
             ? Border.all(color: widget.borderColor!, width: widget.borderWidth!)
             : null,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          widget.showProgressIndicator
-              ? LinearProgressIndicator(
-                  value: widget.progressIndicatorController != null
-                      ? _progressAnimation.value
-                      : null,
-                  backgroundColor: widget.progressIndicatorBackgroundColor,
-                  valueColor: widget.progressIndicatorValueColor,
-                )
-              : _emptyWidget,
-          Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              _buildLeftBarIndicator(),
-              if (_rowStyle == RowStyle.icon || _rowStyle == RowStyle.all)
-                ConstrainedBox(
-                  constraints:
-                      BoxConstraints.tightFor(width: 42.0 + iconPadding),
-                  child: _getIcon(),
-                ),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    if (_isTitlePresent)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: widget.padding.top,
-                          left: left,
-                          right: right,
-                        ),
-                        child: widget.titleText ??
-                            Text(
-                              widget.title ?? "",
-                              style: const TextStyle(
-                                fontSize: 16.0,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                      )
-                    else
-                      _emptyWidget,
-                    Padding(
-                      padding: EdgeInsets.only(
-                        top: _messageTopMargin,
-                        left: left,
-                        right: right,
-                        bottom: widget.padding.bottom,
-                      ),
-                      child: widget.messageText ??
-                          Text(
-                            widget.message ?? "",
-                            style: const TextStyle(
-                                fontSize: 14.0, color: Colors.white),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_rowStyle == RowStyle.action || _rowStyle == RowStyle.all)
-                Padding(
-                  padding: EdgeInsets.only(right: buttonPadding),
-                  child: widget.mainButton,
-                ),
-            ],
-          ),
-        ],
-      ),
+      child: widget.borderRadius > 0
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              child: content,
+            )
+          : content,
     );
   }
 

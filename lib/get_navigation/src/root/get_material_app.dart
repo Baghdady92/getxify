@@ -77,6 +77,12 @@ class GetMaterialApp extends StatelessWidget {
   final BackButtonDispatcher? backButtonDispatcher;
   final bool useInheritedMediaQuery;
 
+  /// The identifier to use for state restoration of this app.
+  ///
+  /// Forwarded to [MaterialApp.restorationScopeId]. Providing a non-null
+  /// value enables state restoration for the application.
+  final String? restorationScopeId;
+
   /// Creates a [GetMaterialApp] instance for a standard GetX application.
   ///
   /// You can use [home] to set the main entry widget, or provide a list of [getPages]
@@ -138,6 +144,7 @@ class GetMaterialApp extends StatelessWidget {
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
+    this.restorationScopeId,
   }) : routeInformationProvider = null,
        backButtonDispatcher = null,
        routeInformationParser = null,
@@ -202,6 +209,7 @@ class GetMaterialApp extends StatelessWidget {
     this.getPages,
     this.navigatorObservers,
     this.unknownRoute,
+    this.restorationScopeId,
   }) : navigatorKey = null,
        onGenerateRoute = null,
        home = null,
@@ -298,6 +306,7 @@ class GetMaterialApp extends StatelessWidget {
               debugShowCheckedModeBanner: debugShowCheckedModeBanner,
               shortcuts: shortcuts,
               scrollBehavior: scrollBehavior,
+              restorationScopeId: restorationScopeId,
             );
           }
 
@@ -338,6 +347,7 @@ class GetMaterialApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 )
               : MaterialApp.router(
                   routerDelegate: controller.config.routerDelegate,
@@ -380,6 +390,7 @@ class GetMaterialApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 );
         },
       ),

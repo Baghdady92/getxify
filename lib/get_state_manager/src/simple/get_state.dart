@@ -382,6 +382,7 @@ class Binder<T> extends InheritedWidget {
   @override
   bool updateShouldNotify(Binder<T> oldWidget) {
     return oldWidget.id != id ||
+        oldWidget.tag != tag ||
         oldWidget.global != global ||
         oldWidget.autoRemove != autoRemove ||
         oldWidget.assignId != assignId;
@@ -424,39 +425,62 @@ class BindElement<T> extends InheritedElement {
   Object? _filter;
 
   void initState() {
-    var isRegistered = Get.isRegistered<T>(tag: widget.tag);
+    _resolveController(widget);
+    widget.initState?.call(this);
+  }
 
-    if (widget.global) {
+  /// Resolves the controller this element binds to, using [binder]'s
+  /// configuration (tag, `init`/`create` builders, `global`).
+  ///
+  /// Called from [initState] with the initial widget and from [update]
+  /// with the incoming widget when its `tag` changed, so the element
+  /// rebinds to the instance registered under the new tag.
+  void _resolveController(Binder<T> binder) {
+    var isRegistered = Get.isRegistered<T>(tag: binder.tag);
+
+    if (binder.global) {
       if (isRegistered) {
-        if (Get.isPrepared<T>(tag: widget.tag)) {
+        if (Get.isPrepared<T>(tag: binder.tag)) {
           _isCreator = true;
         } else {
           _isCreator = false;
         }
 
-        _controllerBuilder = () => Get.find<T>(tag: widget.tag);
+        _controllerBuilder = () => Get.find<T>(tag: binder.tag);
       } else {
+        if (binder.create == null && binder.init == null) {
+          throw BindError(
+            controller: T,
+            tag: binder.tag,
+            message:
+                'No instance of "$T" '
+                '${binder.tag == null ? 'without a tag' : 'with tag "${binder.tag}"'} '
+                'is registered, and no "init" or "create" builder was '
+                'supplied to this GetBuilder/Bind. If "$T" was registered '
+                'with Get.put(..., tag: ...), pass the same tag to this '
+                'widget, or provide an "init"/"create" builder so it can '
+                'create the instance itself.',
+          );
+        }
         _controllerBuilder = () =>
-            (widget.create?.call(this) ?? widget.init?.call());
+            (binder.create?.call(this) ?? binder.init?.call());
         _isCreator = true;
-        if (widget.lazy) {
-          Get.lazyPut<T>(_controllerBuilder!, tag: widget.tag);
+        if (binder.lazy) {
+          Get.lazyPut<T>(_controllerBuilder!, tag: binder.tag);
         } else {
-          Get.put<T>(_controllerBuilder!(), tag: widget.tag);
+          Get.put<T>(_controllerBuilder!(), tag: binder.tag);
         }
       }
     } else {
-      if (widget.create != null) {
-        _controllerBuilder = () => widget.create!.call(this);
-        Get.spawn<T>(_controllerBuilder!, tag: widget.tag, permanent: false);
+      if (binder.create != null) {
+        _controllerBuilder = () => binder.create!.call(this);
+        Get.spawn<T>(_controllerBuilder!, tag: binder.tag, permanent: false);
       } else {
-        _controllerBuilder = widget.init;
+        _controllerBuilder = binder.init;
       }
       _isCreator = true;
       _needStart = true;
     }
-
-    widget.initState?.call(this);
   }
 
   /// Register to listen Controller's events.
@@ -554,9 +578,14 @@ class BindElement<T> extends InheritedElement {
     }
   }
 
-  void dispose() {
-    widget.dispose?.call(this);
-
+  /// Detaches this element from its current controller: removes the
+  /// listener subscription and applies the creator-side removal rules
+  /// (autoRemove/assignId deletion, deferred disposal) against the
+  /// current [widget]'s tag.
+  ///
+  /// Shared by [dispose] (element unmount) and [update] (rebinding when
+  /// the widget's `tag` changed).
+  void _unbindController() {
     _remove?.call();
     _remove = null;
 
@@ -584,6 +613,12 @@ class BindElement<T> extends InheritedElement {
         !_hasOtherSubscribers(localController)) {
       _completeDeferredDisposal(localController);
     }
+  }
+
+  void dispose() {
+    widget.dispose?.call(this);
+
+    _unbindController();
 
     for (final disposer in disposers) {
       disposer();
@@ -612,13 +647,38 @@ class BindElement<T> extends InheritedElement {
 
   @override
   void update(Binder<T> newWidget) {
-    final oldNotifier = widget.id;
-    final newNotifier = newWidget.id;
-    if (oldNotifier != newNotifier && _wasStarted) {
-      _subscribeToController();
+    if (widget.tag != newWidget.tag) {
+      _rebindController(newWidget);
+    } else {
+      final oldNotifier = widget.id;
+      final newNotifier = newWidget.id;
+      if (oldNotifier != newNotifier && _wasStarted) {
+        _subscribeToController();
+      }
     }
     widget.didUpdateWidget?.call(widget, this);
     super.update(newWidget);
+  }
+
+  /// Releases the controller bound under the previous `tag` and resolves
+  /// the one that [newWidget]'s tag refers to, so a rebuild that changes
+  /// `tag` binds dependents to the new instance instead of keeping the
+  /// stale one.
+  ///
+  /// The old controller goes through the same removal rules as on
+  /// unmount ([_unbindController]), so a controller this element created
+  /// with `autoRemove` is deleted (or defer-disposed while other
+  /// elements still subscribe) under its original tag.
+  void _rebindController(Binder<T> newWidget) {
+    _unbindController();
+    _controller = null;
+    _controllerBuilder = null;
+    _isCreator = false;
+    _needStart = false;
+    _wasStarted = false;
+    _filter = null;
+    _tickerProvider = null;
+    _resolveController(newWidget);
   }
 
   @override
@@ -665,13 +725,23 @@ class BindElement<T> extends InheritedElement {
 class BindError<T> extends Error {
   /// The type of the class the user tried to retrieve
   final T controller;
+
+  /// The tag used in the failed lookup, if any.
   final String? tag;
 
+  /// Optional description of why the bind failed; when provided it is
+  /// used verbatim instead of the generic "no ancestor found" message.
+  final String? message;
+
   /// Creates a [BindError]
-  BindError({required this.controller, required this.tag});
+  BindError({required this.controller, required this.tag, this.message});
 
   @override
   String toString() {
+    if (message != null) {
+      return 'Error: $message';
+    }
+
     if (controller == 'dynamic') {
       return '''Error: please specify type [<T>] when calling context.listen<T>() or context.find<T>() method.''';
     }

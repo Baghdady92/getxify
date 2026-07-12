@@ -17,6 +17,13 @@ import 'get_router_delegate.dart';
 /// and upgrades [RouteInformationReportingType.none] to
 /// [RouteInformationReportingType.neglect] when the delegate marked the last
 /// stack mutation as a replacement, so the engine receives `replace: true`.
+///
+/// The very first report after startup is always upgraded the same way: no
+/// user navigation can have occurred before it, so it merely normalizes the
+/// engine's initial location (initial-route resolution, default-child
+/// expansion or a middleware redirect). Pushing it would create a phantom
+/// history entry that activates the browser back button on a plain page
+/// load (#3266).
 class GetRouteInformationProvider extends PlatformRouteInformationProvider {
   /// Creates a provider bound to the given [GetDelegate].
   ///
@@ -29,13 +36,20 @@ class GetRouteInformationProvider extends PlatformRouteInformationProvider {
 
   final GetDelegate _delegate;
 
+  /// Whether the first route information report has already been sent to
+  /// the engine (see the class documentation).
+  bool _firstReportDone = false;
+
   @override
   void routerReportsNewRouteInformation(
     RouteInformation routeInformation, {
     RouteInformationReportingType type = RouteInformationReportingType.none,
   }) {
     final replace = _delegate.consumeReplaceReport();
-    if (replace && type == RouteInformationReportingType.none) {
+    final isFirstReport = !_firstReportDone;
+    _firstReportDone = true;
+    if ((replace || isFirstReport) &&
+        type == RouteInformationReportingType.none) {
       type = RouteInformationReportingType.neglect;
     }
     super.routerReportsNewRouteInformation(routeInformation, type: type);

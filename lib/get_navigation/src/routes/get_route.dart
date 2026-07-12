@@ -29,6 +29,15 @@ class GetPage<T> extends Page<T> {
   final Duration? transitionDuration;
   final Duration? reverseTransitionDuration;
   final bool fullscreenDialog;
+
+  /// Whether the route created for this page prefers to animate a snapshot
+  /// of the entering/exiting pages during transitions
+  /// ([PageRoute.allowSnapshotting]).
+  ///
+  /// Set this to `false` when the page keeps animating while a transition
+  /// runs (e.g. ripples, shimmers or videos), which a snapshot would
+  /// freeze.
+  final bool allowSnapshotting;
   final bool preventDuplicates;
   final Completer<T?>? completer;
   // @override
@@ -40,6 +49,10 @@ class GetPage<T> extends Page<T> {
   @override
   final Object? arguments;
 
+  /// The route name this page is registered under.
+  ///
+  /// Route names must start with a slash (e.g. `/home`); passing a name
+  /// without a leading slash throws an [AssertionError] in debug mode.
   @override
   final String name;
 
@@ -76,6 +89,7 @@ class GetPage<T> extends Page<T> {
     this.transition,
     this.customTransition,
     this.fullscreenDialog = false,
+    this.allowSnapshotting = true,
     this.children = const <GetPage>[],
     this.middlewares = const [],
     this.unknownRoute,
@@ -91,8 +105,11 @@ class GetPage<T> extends Page<T> {
     super.onPopInvoked = _defaultPopInvokedHandler,
     super.restorationId,
   })  : path = _nameToRegex(name),
-        assert(name.startsWith('/'),
-            'It is necessary to start route name [$name] with a slash: /$name'),
+        assert(
+            name.startsWith('/'),
+            'Invalid route name: "$name". '
+            'GetPage route names must start with a slash "/". '
+            'Use "/$name" instead of "$name".'),
         super(
           key: key ?? ValueKey(name),
           name: name,
@@ -119,6 +136,7 @@ class GetPage<T> extends Page<T> {
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
     bool? fullscreenDialog,
+    bool? allowSnapshotting,
     RouteSettings? settings,
     List<GetPage<T>>? children,
     GetPage? unknownRoute,
@@ -160,6 +178,7 @@ class GetPage<T> extends Page<T> {
       reverseTransitionDuration:
           reverseTransitionDuration ?? this.reverseTransitionDuration,
       fullscreenDialog: fullscreenDialog ?? this.fullscreenDialog,
+      allowSnapshotting: allowSnapshotting ?? this.allowSnapshotting,
       children: children ?? this.children,
       unknownRoute: unknownRoute ?? this.unknownRoute,
       middlewares: middlewares ?? this.middlewares,

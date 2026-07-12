@@ -131,13 +131,21 @@ extension SetExtension<E> on Set<E> {
 
   /// Replaces all existing items of this set with [item]
   void assign(E item) {
-    clear();
+    if (this is RxSet) {
+      (this as RxSet).value.clear();
+    } else {
+      clear();
+    }
     add(item);
   }
 
   /// Replaces all existing items of this set with [items]
   void assignAll(Iterable<E> items) {
-    clear();
+    if (this is RxSet) {
+      (this as RxSet).value.clear();
+    } else {
+      clear();
+    }
     addAll(items);
   }
 }

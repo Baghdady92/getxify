@@ -35,9 +35,7 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
     this.enterBottomSheetDuration = const Duration(milliseconds: 250),
     this.exitBottomSheetDuration = const Duration(milliseconds: 200),
     this.curve,
-  }) {
-    RouterReportManager.instance.reportCurrentRoute(this);
-  }
+  });
   final WidgetBuilder? builder;
   final ThemeData? theme;
   final bool isScrollControlled;

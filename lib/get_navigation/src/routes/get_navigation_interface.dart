@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../get_instance/src/bindings_interface.dart';
+import '../routes/custom_transition.dart';
 import '../routes/get_route.dart';
 import '../routes/transitions_type.dart';
 
@@ -60,6 +61,7 @@ mixin IGetNavigation {
     bool? popGesture,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   });
 
   Future<void> popModeUntil(
@@ -82,6 +84,7 @@ mixin IGetNavigation {
     bool? popGesture,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   });
 
   Future<T?>? offAll<T>(
@@ -99,6 +102,7 @@ mixin IGetNavigation {
     Duration? duration,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   });
 
   Future<T?> toNamed<T>(

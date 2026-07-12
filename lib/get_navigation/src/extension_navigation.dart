@@ -6,6 +6,7 @@ import 'package:getxify/get_navigation/src/routes/test_kit.dart';
 import '../../getxify.dart';
 import 'dialog/dialog_route.dart';
 import 'root/get_root.dart';
+import 'router_report.dart';
 
 class RouteNotFoundException implements Exception {
   final String message;
@@ -32,6 +33,13 @@ bool _isBottomSheetRoute(Route<dynamic>? route) =>
     route is GetModalBottomSheetRoute || route is ModalBottomSheetRoute;
 
 extension ExtensionBottomSheet on GetInterface {
+  /// Shows a modal bottom sheet containing [bottomsheet].
+  ///
+  /// [arguments] and [name] are shortcuts to build the sheet's
+  /// [RouteSettings], mirroring `Get.dialog`; the arguments become
+  /// readable through `Get.arguments` while the sheet is open. When an
+  /// explicit [settings] is provided it takes precedence and both
+  /// shortcuts are ignored.
   Future<T?> bottomSheet<T>(
     Widget bottomsheet, {
     Color? backgroundColor,
@@ -45,6 +53,8 @@ extension ExtensionBottomSheet on GetInterface {
     bool useRootNavigator = false,
     bool isDismissible = true,
     bool enableDrag = true,
+    Object? arguments,
+    String? name,
     RouteSettings? settings,
     Duration? enterBottomSheetDuration,
     Duration? exitBottomSheetDuration,
@@ -55,7 +65,12 @@ extension ExtensionBottomSheet on GetInterface {
     Color? shadowColor,
     Color? surfaceTintColor,
   }) {
-    return Navigator.of(overlayContext!, rootNavigator: useRootNavigator).push(
+    final navigatorState = Navigator.of(
+      overlayContext!,
+      rootNavigator: useRootNavigator,
+    );
+    final routeUnderSheet = _topRouteOf(navigatorState);
+    final result = navigatorState.push(
       GetModalBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
         theme: Theme.of(key.currentContext!),
@@ -75,7 +90,8 @@ extension ExtensionBottomSheet on GetInterface {
         clipBehavior: clipBehavior,
         isDismissible: isDismissible,
         modalBarrierColor: barrierColor,
-        settings: settings,
+        settings:
+            settings ?? RouteSettings(name: name, arguments: arguments),
         enableDrag: enableDrag,
         enterBottomSheetDuration:
             enterBottomSheetDuration ?? const Duration(milliseconds: 250),
@@ -89,7 +105,32 @@ extension ExtensionBottomSheet on GetInterface {
         surfaceTintColor: surfaceTintColor,
       ),
     );
+    _relinkDependenciesTo(routeUnderSheet);
+    return result;
   }
+}
+
+/// Returns the topmost route of [navigatorState] without popping it.
+Route<dynamic>? _topRouteOf(NavigatorState navigatorState) {
+  Route<dynamic>? topRoute;
+  navigatorState.popUntil((route) {
+    topRoute = route;
+    return true;
+  });
+  return topRoute;
+}
+
+/// Reassigns new dependency registrations to [route].
+///
+/// Transient overlays (dialogs and bottom sheets) must not own the
+/// instances registered while they are open: a `Get.put` executed inside
+/// an overlay's builder logically belongs to the page under the overlay
+/// and has to survive the overlay's dismissal. Since pushing the overlay
+/// synchronously reports it as the current dependency-link target, this
+/// restores the target to the route that was topmost before the push.
+void _relinkDependenciesTo(Route<dynamic>? route) {
+  if (route == null) return;
+  RouterReportManager.instance.reportCurrentRoute(route);
 }
 
 extension ExtensionDialog on GetInterface {
@@ -97,6 +138,10 @@ extension ExtensionDialog on GetInterface {
   /// You can pass a [transitionDuration] and/or [transitionCurve],
   /// overriding the defaults when the dialog shows up and closes.
   /// When the dialog closes, uses those animations in reverse.
+  ///
+  /// Pass a [transitionBuilder] to fully replace the default fade
+  /// animation with a custom one; [transitionCurve] is ignored in
+  /// that case, while [transitionDuration] still drives the animation.
   Future<T?> dialog<T>(
     Widget widget, {
     bool barrierDismissible = true,
@@ -106,6 +151,7 @@ extension ExtensionDialog on GetInterface {
     Object? arguments,
     Duration? transitionDuration,
     Curve? transitionCurve,
+    RouteTransitionsBuilder? transitionBuilder,
     String? name,
     RouteSettings? routeSettings,
     Offset? anchorPoint,
@@ -132,15 +178,17 @@ extension ExtensionDialog on GetInterface {
       barrierLabel: MaterialLocalizations.of(context!).modalBarrierDismissLabel,
       barrierColor: barrierColor ?? Colors.black54,
       transitionDuration: transitionDuration ?? defaultDialogTransitionDuration,
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: transitionCurve ?? defaultDialogTransitionCurve,
-          ),
-          child: child,
-        );
-      },
+      transitionBuilder:
+          transitionBuilder ??
+          (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: transitionCurve ?? defaultDialogTransitionCurve,
+              ),
+              child: child,
+            );
+          },
       navigatorKey: navigatorKey,
       routeSettings:
           routeSettings ?? RouteSettings(arguments: arguments, name: name),
@@ -172,7 +220,8 @@ extension ExtensionDialog on GetInterface {
           overlayContext!,
           rootNavigator: true,
         ); //overlay context will always return the root navigator
-    return nav.push<T>(
+    final routeUnderDialog = _topRouteOf(nav);
+    final result = nav.push<T>(
       GetDialogRoute<T>(
         pageBuilder: pageBuilder,
         barrierDismissible: barrierDismissible,
@@ -185,6 +234,8 @@ extension ExtensionDialog on GetInterface {
         traversalEdgeBehavior: traversalEdgeBehavior,
       ),
     );
+    _relinkDependenciesTo(routeUnderDialog);
+    return result;
   }
 
   /// Custom UI Dialog.
@@ -196,6 +247,12 @@ extension ExtensionDialog on GetInterface {
   /// tapped. Like the confirm button, the custom button does not close
   /// the dialog by itself; close it from your callback if desired.
   /// For custom body content use [content] instead.
+  ///
+  /// Set [canPop] to false to block the system back gesture/button from
+  /// dismissing the dialog; it can then only be closed programmatically
+  /// (e.g. `Get.back()` from one of its actions). [onWillPop] is still
+  /// invoked for every pop attempt, with `didPop` false when the pop
+  /// was blocked.
   Future<T?> defaultDialog<T>({
     String title = "Alert",
     EdgeInsetsGeometry? titlePadding,
@@ -222,6 +279,7 @@ extension ExtensionDialog on GetInterface {
     double radius = 20.0,
     List<Widget>? actions,
     PopInvokedWithResultCallback<T>? onWillPop,
+    bool canPop = true,
     GlobalKey<NavigatorState>? navigatorKey,
     Offset? anchorPoint,
     TraversalEdgeBehavior? traversalEdgeBehavior,
@@ -363,11 +421,11 @@ extension ExtensionDialog on GetInterface {
     );
 
     return dialog<T>(
-      onWillPop != null
+      (onWillPop != null || !canPop)
           ? PopScope<T>(
+              canPop: canPop,
               onPopInvokedWithResult: (didPop, result) =>
-                  onWillPop(didPop, result),
-              // onPopInvoked: onWillPop,
+                  onWillPop?.call(didPop, result),
               child: baseAlertDialog,
             )
           : baseAlertDialog,
@@ -610,6 +668,9 @@ extension GetNavigationExt on GetInterface {
   ///
   /// By default, GetX will prevent you from push a route that you already in,
   /// if you want to push anyway, set [preventDuplicates] to false
+  ///
+  /// For fully custom transition animations, pass a [customTransition];
+  /// it takes precedence over [transition].
   Future<T?>? to<T extends Object?>(
     Widget Function() page, {
     bool? opaque,
@@ -625,6 +686,7 @@ extension GetNavigationExt on GetInterface {
     bool? popGesture,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
     bool rebuildStack = true,
     PreventDuplicateHandlingMode preventDuplicateHandlingMode =
         PreventDuplicateHandlingMode.reorderRoutes,
@@ -644,6 +706,7 @@ extension GetNavigationExt on GetInterface {
       popGesture: popGesture,
       showCupertinoParallax: showCupertinoParallax,
       gestureWidth: gestureWidth,
+      customTransition: customTransition,
       rebuildStack: rebuildStack,
       preventDuplicateHandlingMode: preventDuplicateHandlingMode,
     );
@@ -884,24 +947,34 @@ extension GetNavigationExt on GetInterface {
   ///
   /// It has the advantage of not needing context, so you can call
   /// from your business logic.
-  void back<T>({T? result, bool canPop = true, int times = 1, String? id}) {
+  ///
+  /// Returns whether the back navigation was performed: `false` when
+  /// [canPop] is true but there is no route to go back to (e.g. the
+  /// current page is the only one in the stack, as after a deep link),
+  /// so callers can detect the ignored back and react, `true` otherwise.
+  bool back<T>({T? result, bool canPop = true, int times = 1, String? id}) {
     if (times < 1) {
       times = 1;
     }
 
     if (times > 1) {
       var count = 0;
-      return searchDelegate(id).backUntil((route) => count++ == times);
+      searchDelegate(id).backUntil((route) => count++ == times);
+      return true;
     } else {
       if (_topRoute(id: id)?.willHandlePopInternally == true) {
-        return searchDelegate(id).navigatorKey.currentState?.pop<T>(result);
+        searchDelegate(id).navigatorKey.currentState?.pop<T>(result);
+        return true;
       }
       if (canPop) {
         if (searchDelegate(id).canBack == true) {
-          return searchDelegate(id).back<T>(result);
+          searchDelegate(id).back<T>(result);
+          return true;
         }
+        return false;
       } else {
-        return searchDelegate(id).back<T>(result);
+        searchDelegate(id).back<T>(result);
+        return true;
       }
     }
   }
@@ -1120,6 +1193,9 @@ extension GetNavigationExt on GetInterface {
   ///
   /// By default, GetX will prevent you from push a route that you already in,
   /// if you want to push anyway, set [preventDuplicates] to false
+  ///
+  /// For fully custom transition animations, pass a [customTransition];
+  /// it takes precedence over [transition].
   Future<T?>? off<T>(
     Widget Function() page, {
     bool? opaque,
@@ -1134,6 +1210,7 @@ extension GetNavigationExt on GetInterface {
     bool preventDuplicates = true,
     Duration? duration,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
@@ -1154,6 +1231,7 @@ extension GetNavigationExt on GetInterface {
       preventDuplicates: preventDuplicates,
       duration: duration,
       gestureWidth: gestureWidth,
+      customTransition: customTransition,
     );
   }
 
@@ -1196,6 +1274,9 @@ extension GetNavigationExt on GetInterface {
   ///
   /// By default, GetX will prevent you from push a route that you already in,
   /// if you want to push anyway, set [preventDuplicates] to false
+  ///
+  /// For fully custom transition animations, pass a [customTransition];
+  /// it takes precedence over [transition].
   Future<T?>? offAll<T>(
     Widget Function() page, {
     bool Function(GetPage<dynamic>)? predicate,
@@ -1210,6 +1291,7 @@ extension GetNavigationExt on GetInterface {
     Curve? curve,
     Duration? duration,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   }) {
     routeName ??= "/${page.runtimeType.toString()}";
     routeName = _cleanRouteName(routeName);
@@ -1227,6 +1309,7 @@ extension GetNavigationExt on GetInterface {
       curve: curve,
       duration: duration,
       gestureWidth: gestureWidth,
+      customTransition: customTransition,
     );
   }
 
@@ -1324,12 +1407,21 @@ extension GetNavigationExt on GetInterface {
       _routingOrNull != null &&
       SnackbarController.isSnackbarBeingShown; //routing.isSnackbar;
 
-  void closeAllSnackbars() {
-    SnackbarController.cancelAllSnackbars();
+  /// Closes all queued snackbars.
+  ///
+  /// When [withAnimations] is false, the currently visible snackbar is
+  /// removed immediately, skipping its exit animation.
+  void closeAllSnackbars({bool withAnimations = true}) {
+    SnackbarController.cancelAllSnackbars(withAnimations: withAnimations);
   }
 
-  Future<void> closeCurrentSnackbar() async {
-    await SnackbarController.closeCurrentSnackbar();
+  /// Closes the currently visible snackbar, if any.
+  ///
+  /// When [withAnimations] is false, the snackbar is removed immediately,
+  /// skipping its exit animation.
+  Future<void> closeCurrentSnackbar({bool withAnimations = true}) async {
+    await SnackbarController.closeCurrentSnackbar(
+        withAnimations: withAnimations);
   }
 
   /// check if dialog is open,
@@ -1390,8 +1482,12 @@ extension GetNavigationExt on GetInterface {
 
   Transition? get defaultTransition => _getxController.defaultTransition;
 
+  /// The transition duration applied to routes that don't set their own:
+  /// the `transitionDuration` given to `GetMaterialApp`/`GetCupertinoApp`,
+  /// or 300 milliseconds when none was provided.
   Duration get defaultTransitionDuration {
-    return _getxController.defaultTransitionDuration;
+    return _getxController.transitionDuration ??
+        _getxController.defaultTransitionDuration;
   }
 
   Curve get defaultTransitionCurve => _getxController.defaultTransitionCurve;
@@ -1420,6 +1516,19 @@ extension GetNavigationExt on GetInterface {
   T args<T>() {
     if (_shouldUseMock) {
       return GetTestMode.arguments as T;
+    }
+    // Dialogs and bottom sheets are pushed imperatively on the navigator
+    // and never enter the delegate's page stack, so arguments given to
+    // `Get.dialog`/`Get.bottomSheet` live only in the overlay route's
+    // settings. While such an overlay is topmost, honor its arguments;
+    // an overlay opened without arguments keeps exposing the underlying
+    // page's arguments, and closing the overlay restores them.
+    final overlayRoute = _routingOrNull?.route;
+    if (overlayRoute != null &&
+        (_isDialogRoute(overlayRoute) || _isBottomSheetRoute(overlayRoute)) &&
+        overlayRoute.isCurrent &&
+        overlayRoute.settings.arguments != null) {
+      return overlayRoute.settings.arguments as T;
     }
     return rootController.rootDelegate.arguments<T>();
   }

@@ -17,11 +17,13 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before the animation starts playing.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder fadeIn({
     Duration duration = _defaultDuration,
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     assert(isSequential || this is! FadeOutAnimation,
         'Can not use fadeOut + fadeIn when isSequential is false');
@@ -30,6 +32,7 @@ extension AnimationExtension on Widget {
       duration: duration,
       delay: _getDelay(isSequential, delay),
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -40,11 +43,13 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before the animation starts playing.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder fadeOut({
     Duration duration = _defaultDuration,
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     assert(isSequential || this is! FadeInAnimation,
         'Can not use fadeOut() + fadeIn when isSequential is false');
@@ -53,6 +58,7 @@ extension AnimationExtension on Widget {
       duration: duration,
       delay: _getDelay(isSequential, delay),
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -65,6 +71,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before the rotation starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder rotate({
     required double begin,
     required double end,
@@ -72,6 +79,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return RotateAnimation(
       duration: duration,
@@ -79,6 +87,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -91,6 +100,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before scaling starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder scale({
     required double begin,
     required double end,
@@ -98,6 +108,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return ScaleAnimation(
       duration: duration,
@@ -105,6 +116,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -130,6 +142,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before sliding starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder slide({
     required OffsetBuilder offset,
     double begin = 0,
@@ -138,6 +151,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return SlideAnimation(
       duration: duration,
@@ -146,6 +160,7 @@ extension AnimationExtension on Widget {
       end: end,
       onComplete: onComplete,
       offsetBuild: offset,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -158,6 +173,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before bouncing starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder bounce({
     required double begin,
     required double end,
@@ -165,6 +181,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return BounceAnimation(
       duration: duration,
@@ -172,6 +189,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -182,16 +200,19 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before the spin starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder spin({
     Duration duration = _defaultDuration,
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return SpinAnimation(
       duration: duration,
       delay: _getDelay(isSequential, delay),
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -204,6 +225,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before resizing starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder size({
     required double begin,
     required double end,
@@ -211,6 +233,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return SizeAnimation(
       duration: duration,
@@ -218,6 +241,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -230,6 +254,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before blurring starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder blur({
     double begin = 0,
     double end = 15,
@@ -237,6 +262,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return BlurAnimation(
       duration: duration,
@@ -244,6 +270,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -256,6 +283,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before flipping starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder flip({
     double begin = 0,
     double end = 1,
@@ -263,6 +291,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return FlipAnimation(
       duration: duration,
@@ -270,6 +299,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }
@@ -282,6 +312,7 @@ extension AnimationExtension on Widget {
   /// - [delay] The delay duration before the wave starts.
   /// - [onComplete] A callback triggered when the animation completes.
   /// - [isSequential] If true, starts this animation after the previous one in the chain completes.
+  /// - [autoPlayOnUpdate] If true, replays the animation when rebuilt with a different tween.
   GetAnimatedBuilder wave({
     double begin = 0,
     double end = 1,
@@ -289,6 +320,7 @@ extension AnimationExtension on Widget {
     Duration delay = _defaultDelay,
     ValueSetter<AnimationController>? onComplete,
     bool isSequential = false,
+    bool autoPlayOnUpdate = false,
   }) {
     return WaveAnimation(
       duration: duration,
@@ -296,6 +328,7 @@ extension AnimationExtension on Widget {
       begin: begin,
       end: end,
       onComplete: onComplete,
+      autoPlayOnUpdate: autoPlayOnUpdate,
       child: this,
     );
   }

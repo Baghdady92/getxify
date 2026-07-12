@@ -617,6 +617,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     bool? popGesture,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
     bool rebuildStack = true,
     PreventDuplicateHandlingMode preventDuplicateHandlingMode =
         PreventDuplicateHandlingMode.reorderRoutes,
@@ -626,7 +627,11 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     // to this method after setting the pending replace report, in which case
     // the flag must be preserved.
     if (!_delegatedReplaceNavigation) _pendingReplaceReport = false;
-    routeName ??= _cleanRouteName("/${page.runtimeType}");
+    // Names arriving from the context navigation extensions were cleaned
+    // with the legacy closure-only rule, so provided names are re-cleaned
+    // to also cover constructor tear-offs (#2245); explicit user names are
+    // untouched, since the pattern only matches runtimeType artifacts.
+    routeName = _cleanRouteName(routeName ?? "/${page.runtimeType}");
 
     final getPage = GetPage<T>(
       name: routeName,
@@ -637,6 +642,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       popGesture: popGesture ?? Get.defaultPopGesture,
       transition: transition ?? Get.defaultTransition,
       curve: curve ?? Get.defaultTransitionCurve,
+      customTransition: customTransition,
       fullscreenDialog: fullscreenDialog,
       bindings: bindings,
       transitionDuration: duration ?? Get.defaultTransitionDuration,
@@ -676,8 +682,13 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     bool? popGesture,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   }) async {
-    routeName ??= _cleanRouteName("/${page.runtimeType}");
+    // Names arriving from the context navigation extensions were cleaned
+    // with the legacy closure-only rule, so provided names are re-cleaned
+    // to also cover constructor tear-offs (#2245); explicit user names are
+    // untouched, since the pattern only matches runtimeType artifacts.
+    routeName = _cleanRouteName(routeName ?? "/${page.runtimeType}");
     final route = GetPage<T>(
       name: routeName,
       opaque: opaque ?? true,
@@ -687,6 +698,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       popGesture: popGesture ?? Get.defaultPopGesture,
       transition: transition ?? Get.defaultTransition,
       curve: curve ?? Get.defaultTransitionCurve,
+      customTransition: customTransition,
       fullscreenDialog: fullscreenDialog,
       bindings: bindings,
       transitionDuration: duration ?? Get.defaultTransitionDuration,
@@ -713,8 +725,13 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     Duration? duration,
     bool showCupertinoParallax = true,
     double Function(BuildContext context)? gestureWidth,
+    CustomTransition? customTransition,
   }) async {
-    routeName ??= _cleanRouteName("/${page.runtimeType}");
+    // Names arriving from the context navigation extensions were cleaned
+    // with the legacy closure-only rule, so provided names are re-cleaned
+    // to also cover constructor tear-offs (#2245); explicit user names are
+    // untouched, since the pattern only matches runtimeType artifacts.
+    routeName = _cleanRouteName(routeName ?? "/${page.runtimeType}");
     final route = GetPage<T>(
       name: routeName,
       opaque: opaque,
@@ -724,6 +741,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       popGesture: popGesture ?? Get.defaultPopGesture,
       transition: transition ?? Get.defaultTransition,
       curve: curve ?? Get.defaultTransitionCurve,
+      customTransition: customTransition,
       fullscreenDialog: fullscreenDialog,
       bindings: bindings,
       transitionDuration: duration ?? Get.defaultTransitionDuration,
@@ -947,6 +965,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     }
 
     final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
+    _recreateIfSameKey(index, activePage);
     _activePages[index] = activePage;
 
     notifyListeners();
@@ -956,12 +975,28 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return result;
   }
 
+  /// Rekeys [activePage] when it shares its page key with the entry it is
+  /// about to replace at [index].
+  ///
+  /// Replacing an entry with a same-key page (e.g. [offAllNamed] targeting
+  /// the route that remains at the bottom of the stack) would make the
+  /// navigator update the existing route in place, keeping its stale
+  /// content, bindings and controllers alive; a fresh key forces the old
+  /// route to be disposed and the page to be rebuilt from scratch (#2899).
+  void _recreateIfSameKey(int index, RouteDecoder activePage) {
+    if (index >= _activePages.length) return;
+    if (_activePages[index].route?.key == activePage.route?.key) {
+      _recreateEntry(activePage);
+    }
+  }
+
   Future<T?> _replaceNamed<T>(RouteDecoder page) async {
     _lastNavigationWasPop = false;
     final activePage = await runMiddleware(page);
     if (activePage == null) return null;
 
     final index = _activePages.length > 1 ? _activePages.length - 1 : 0;
+    _recreateIfSameKey(index, activePage);
     _activePages[index] = activePage;
 
     notifyListeners();
@@ -973,7 +1008,16 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   /// (and similar context navigation methods), cleans the extra chars and
   /// accommodates the format.
   String _cleanRouteName(String name) {
-    name = name.replaceAll('() => ', '');
+    // A page builder's runtimeType prints as '(<parameters>) => <Widget>',
+    // where the parameter list is empty for closures but not for
+    // constructor tear-offs (e.g. `MyPage.new` prints as
+    // '({Key? key}) => MyPage'), so the whole list is stripped (#2245).
+    // Names cleaned by the context navigation extensions arrive with the
+    // space and arrow already percent-encoded, so both forms are matched.
+    name = name.replaceFirst(
+      RegExp(r'\(.*\)(?:%20|\s)*(?:=>|=%3E)(?:%20|\s)*'),
+      '',
+    );
 
     /// uncomment for URL styling.
     // name = name.paramCase!;
@@ -1143,6 +1187,21 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     final page = configuration.route;
     if (page == null) {
       goToUnknownPage();
+      return;
+    }
+    // Seed the very first route synchronously when no middleware can
+    // intervene, so the initial page is part of the router's first frame:
+    // a single-pump `tester.pumpWidget(GetMaterialApp(home: ...))` must
+    // find the home widget (#3244). Routes guarded by middlewares keep the
+    // asynchronous pipeline below, which resolves redirects first.
+    if (_activePages.isEmpty &&
+        configuration.currentTreeBranch.last.middlewares.isEmpty) {
+      _activePages.add(configuration);
+      // During the initial route processing the router is amid its own
+      // first build and rebuilds right after this call, so notifying is
+      // both illegal and unnecessary; the navigator only exists — making
+      // a notification required — once that first build completed.
+      if (navigatorKey.currentContext != null) notifyListeners();
       return;
     }
     final reportedName = configuration.pageSettings?.name;
