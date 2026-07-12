@@ -146,6 +146,17 @@ Follow-up fixes from an adversarial review of this round's changes:
 - **Fixed `GetAnimatedBuilder` leaking `CurvedAnimation` objects** - they are now owned and disposed across updates and unmount
 - **Hardened in-flight middleware parameters against overlapping navigations** - `resolvingParameters` uses save/restore semantics instead of clear-to-null
 
+### Upstream Issue Fixes — Round 3 (structural)
+
+Three long-standing structural defects that earlier rounds deferred, plus internal cleanups:
+
+- **Pops through the router delegate now play the pop animation** - When a pop surfaces to a navigator as a page replacement (the norm inside `GetRouterOutlet`), the new pop-aware `GetTransitionDelegate` (default for the root and outlet navigators; a user-supplied `transitionDelegate` still wins) animates the leaving route in reverse on top of the revealed page instead of playing a forward push animation; a `PopMode.page` pop of the only history entry now replaces it with the parent branch instead of pushing the parent on top of the leaf (getx#1883)
+- **Deep links no longer take ownership of ancestor pages' controllers** - Dependencies registered by bindings inherited from ancestor pages are linked to the declaring ancestor's route, so leaving a deep-linked leaf no longer disposes controllers the still-visible parent view depends on (getx#2183)
+- **Route disposal no longer deletes controllers a still-visible view depends on** - Deletion of a route-linked instance that still has widget subscribers is deferred to end-of-frame; if subscribers remain after the disposed route's subtree unmounted, the instance is kept alive for the views that use it (getx#2404)
+- **Internal cleanups** - Shared `GetTickerProvider` interface unifies TickerMode forwarding across `GetBuilder`/`Bind`/`GetX`; the bottom-sheet MaterialLocalizations fallback moved into `GetModalBottomSheetRoute.buildPage` (also fixing direct route users under Cupertino apps); overlay close loops resolve the navigator's top route once per iteration and `Get.close()` evaluates its predicates lazily; centralized routing-initialization guards; removed dead code
+
+Known remaining limitation: the iOS swipe-back gesture still cannot pop between sibling routes inside a `GetRouterOutlet` (getx#2107) — it requires cumulative history-derived outlet stacks, a state-retention semantics change documented for future work.
+
 ---
 
 ## 2.0.2

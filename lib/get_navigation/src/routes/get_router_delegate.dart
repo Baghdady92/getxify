@@ -81,6 +81,32 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
     return result;
   }
 
+  bool _lastNavigationWasPop = false;
+
+  /// Whether the change currently being applied to [activePages] was caused
+  /// by a back navigation ([back], [popRoute], [backUntil], [popModeUntil]
+  /// or the platform reporting a back navigation on Flutter Web).
+  ///
+  /// While `true`, [GetTransitionDelegate] resolves page-list changes with
+  /// pop semantics: the leaving page plays its reverse transition and the
+  /// page revealed by the pop enters without a forward animation, even when
+  /// the pop surfaces to a navigator as a page *replacement* — the norm for
+  /// nested [GetRouterOutlet]s, which render only the current tree branch
+  /// (#1883).
+  ///
+  /// The flag is cleared by push/replace navigations and at the end of the
+  /// frame that rendered the pop, so later page-list changes resolve with
+  /// the default forward semantics again.
+  bool get lastNavigationWasPop => _lastNavigationWasPop;
+
+  void _markNavigationAsPop() {
+    _lastNavigationWasPop = true;
+    // Bounds the pop semantics to the frame that renders this change.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _lastNavigationWasPop = false;
+    });
+  }
+
   final _routeTree = ParseRouteTree(routes: []);
 
   List<GetPage> get registeredRoutes => _routeTree.routes;
@@ -378,9 +404,22 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       }
 
       //create a new route with the remaining tree branch
-      final res = await _popHistory<T>(result);
-      await _pushHistory(RouteDecoder(remaining.toList(), null));
-      return res;
+      if (_activePages.length > 1) {
+        final res = await _popHistory<T>(result);
+        await _pushHistory(RouteDecoder(remaining.toList(), null));
+        return res;
+      }
+      // The only history entry cannot go through _popHistory (which refuses
+      // to empty the stack): replace it with the shortened branch instead,
+      // so the pop surfaces to the navigator as the removal of the leaf
+      // page rather than as a push of its parent on top of it.
+      final parent = await runMiddleware(RouteDecoder(remaining.toList(), null));
+      // A middleware stopped the navigation to the parent route: keep the
+      // current entry rather than leaving the stack empty.
+      if (parent == null) return null;
+      _popWithResult<T>(result);
+      _activePages.add(parent);
+      return null;
     } else {
       //remove entire entry
       return await _popHistory(result);
@@ -388,6 +427,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   }
 
   Future<T?> _pop<T>(PopMode mode, T result) async {
+    _markNavigationAsPop();
     switch (mode) {
       case PopMode.history:
         return await _popHistory<T>(result);
@@ -486,8 +526,14 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       onDidRemovePage: _onDidRemoveVisualRoute,
       pages: pages,
       observers: navigatorObservers,
+      // The pop-aware delegate resolves exactly like the framework default
+      // except while [lastNavigationWasPop] is set, so back navigations
+      // that surface as page replacement play a pop animation (#1883).
       transitionDelegate:
-          transitionDelegate ?? const DefaultTransitionDelegate<dynamic>(),
+          transitionDelegate ??
+          GetTransitionDelegate<dynamic>(
+            isPopNavigation: () => _lastNavigationWasPop,
+          ),
     );
   }
 
@@ -874,6 +920,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
 
   @override
   void backUntil(bool Function(GetPage) predicate) {
+    _markNavigationAsPop();
     while (_activePages.length > 1 && !predicate(_activePages.last.route!)) {
       _popWithResult();
     }
@@ -882,6 +929,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   }
 
   Future<T?> _replace<T>(PageSettings arguments, GetPage<T> page) async {
+    _lastNavigationWasPop = false;
     _routeTree.addRoute(page);
 
     // Decode directly from the page built for this call: a route tree
@@ -909,6 +957,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   }
 
   Future<T?> _replaceNamed<T>(RouteDecoder page) async {
+    _lastNavigationWasPop = false;
     final activePage = await runMiddleware(page);
     if (activePage == null) return null;
 
@@ -1010,6 +1059,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
   }
 
   Future<T?> _push<T>(RouteDecoder decoder, {bool rebuildStack = true}) async {
+    _lastNavigationWasPop = false;
     var res = await runMiddleware(decoder);
     if (res == null) {
       // A middleware stopped the navigation. When that happens while the
@@ -1148,6 +1198,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
           }
         }
       }
+      if (existingIndex < _activePages.length - 1) _markNavigationAsPop();
       while (_activePages.length - 1 > existingIndex) {
         _popWithResult();
       }
@@ -1234,6 +1285,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       return;
     }
     _checkIfCanBack();
+    _markNavigationAsPop();
     _popWithResult<T>(result);
     notifyListeners();
   }

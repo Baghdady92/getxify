@@ -452,9 +452,6 @@ class BindElement<T> extends InheritedElement {
       } else {
         _controllerBuilder = widget.init;
       }
-      _controllerBuilder =
-          (widget.create != null ? () => widget.create!.call(this) : null) ??
-          widget.init;
       _isCreator = true;
       _needStart = true;
     }
@@ -493,22 +490,26 @@ class BindElement<T> extends InheritedElement {
       _remove = () => stream.cancel();
     }
 
+    _tickerProvider = localController is GetTickerProvider
+        ? localController
+        : null;
     _updateTickerMode();
   }
 
   bool _isMounted = false;
 
-  /// Forwards this element's [TickerMode] to the controller when it uses
+  /// The controller cast to [GetTickerProvider] when it uses
   /// [GetSingleTickerProviderStateMixin] or [GetTickerProviderStateMixin],
-  /// so its tickers are muted while tickers are disabled in this subtree.
+  /// cached in [_subscribeToController] so [_updateTickerMode] does not
+  /// repeat the type check on every dependency change.
+  GetTickerProvider? _tickerProvider;
+
+  /// Forwards this element's [TickerMode] to the controller when it is a
+  /// [GetTickerProvider], so its tickers are muted while tickers are
+  /// disabled in this subtree.
   void _updateTickerMode() {
     if (!_isMounted) return;
-    final localController = _controller;
-    if (localController is GetSingleTickerProviderStateMixin) {
-      localController.didChangeDependencies(this);
-    } else if (localController is GetTickerProviderStateMixin) {
-      localController.didChangeDependencies(this);
-    }
+    _tickerProvider?.didChangeDependencies(this);
   }
 
   void _filterUpdate() {
@@ -591,6 +592,7 @@ class BindElement<T> extends InheritedElement {
     disposers.clear();
 
     _controller = null;
+    _tickerProvider = null;
     _isCreator = null;
     _filter = null;
     _needStart = null;

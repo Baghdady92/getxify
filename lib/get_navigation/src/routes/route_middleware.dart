@@ -216,6 +216,15 @@ class PageRedirect {
         ? unk ?? context.delegate.notFoundRoute
         : (redirected ? route ?? rou : rou);
 
+    // Attribute each binding of the (possibly nested) page to the branch
+    // page that declared it, so dependencies registered by inherited
+    // ancestor bindings link to the ancestor's route instead of this one
+    // (deep-linking to a nested page must not take ownership of its
+    // ancestors' controllers).
+    final bindingOwners = ParseRouteTree.bindingOwnersOf(
+      context.delegate.matchRoute(r.name).currentTreeBranch,
+    );
+
     return GetPageRoute<T>(
       page: r.page,
       parameter: r.parameters,
@@ -241,6 +250,7 @@ class PageRedirect {
       popGesture: r.popGesture,
       fullscreenDialog: r.fullscreenDialog,
       middlewares: context.delegate.ownMiddlewaresOf(r.name) ?? r.middlewares,
+      bindingOwnerNames: bindingOwners,
     );
   }
 

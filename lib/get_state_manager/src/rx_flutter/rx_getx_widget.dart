@@ -116,10 +116,8 @@ class GetXState<T extends GetLifeCycleMixin> extends State<GetX<T>> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final localController = controller;
-    if (localController is GetSingleTickerProviderStateMixin) {
-      localController.didChangeDependencies(context);
-    } else if (localController is GetTickerProviderStateMixin) {
+    final Object? localController = controller;
+    if (localController is GetTickerProvider) {
       localController.didChangeDependencies(context);
     }
     if (widget.didChangeDependencies != null) {

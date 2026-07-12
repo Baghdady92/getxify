@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../getxify.dart';
@@ -188,6 +190,52 @@ class ParseRouteTree {
     final route = _findRoute(name);
     if (route == null) return null;
     return _ownMiddlewares[route] ?? route.middlewares;
+  }
+
+  /// Maps every binding instance carried by the leaf of [branch] (a tree
+  /// branch as produced by [matchRoute]) to the name of the page that
+  /// declared it.
+  ///
+  /// Route-tree flattening merges each page's bindings into all of its
+  /// descendants ([_flattenChildren]), so a page's binding list is its
+  /// parent's merged list followed by its own declarations. This walks that
+  /// prefix structure to attribute each binding to the branch page that
+  /// declared it, letting a route report dependencies registered by an
+  /// inherited (ancestor) binding against the ancestor's route instead of
+  /// its own — a deep link to a nested page must not take ownership of its
+  /// ancestors' controllers.
+  ///
+  /// Bindings that do not follow the prefix structure (e.g. added by
+  /// `onBindingsStart` later, or a list not produced by the flattening) are
+  /// simply absent from the result and treated as declared by the page
+  /// running them.
+  static Map<BindingsInterface, String> bindingOwnersOf(List<GetPage> branch) {
+    final owners = LinkedHashMap<BindingsInterface, String>.identity();
+    if (branch.isEmpty) return owners;
+
+    // The branch root is a page as declared (never flattened): its own
+    // declarations are its `binding` field plus its `bindings` list, and
+    // both were folded — `binding` first — into every descendant's merged
+    // list by the flattening.
+    final root = branch.first;
+    final rootBinding = root.binding;
+    if (rootBinding != null) {
+      owners.putIfAbsent(rootBinding, () => root.name);
+    }
+    for (final binding in root.bindings) {
+      owners.putIfAbsent(binding, () => root.name);
+    }
+    var prefixLength = (rootBinding != null ? 1 : 0) + root.bindings.length;
+
+    for (final page in branch.skip(1)) {
+      final bindings = page.bindings;
+      if (bindings.length < prefixLength) break;
+      for (var i = prefixLength; i < bindings.length; i++) {
+        owners.putIfAbsent(bindings[i], () => page.name);
+      }
+      prefixLength = bindings.length;
+    }
+    return owners;
   }
 
   /// Returns every descendant of [route] as a flat list of pages whose

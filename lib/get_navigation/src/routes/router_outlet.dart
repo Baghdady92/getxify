@@ -211,6 +211,14 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
                    onDidRemovePage: onDidRemovePage ?? _ignoreDidRemovePage,
                    pages: pageRes.toList(),
                    key: navigatorKey,
+                   // An outlet renders only the current tree branch, so a
+                   // pop through the router delegate usually surfaces here
+                   // as a page replacement; the pop-aware delegate plays
+                   // the leaving page's reverse transition instead of a
+                   // forward push animation (#1883).
+                   transitionDelegate: GetTransitionDelegate<dynamic>(
+                     isPopNavigation: () => rDelegate.lastNavigationWasPop,
+                   ),
                  ),
                ),
              );

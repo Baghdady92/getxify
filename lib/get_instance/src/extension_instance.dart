@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../get_core/get_core.dart';
 import '../../get_navigation/src/router_report.dart';
+import '../../get_state_manager/src/simple/list_notifier.dart';
 import 'lifecycle.dart';
 
 /// Exception thrown when a requested dependency has not been registered
@@ -221,6 +222,12 @@ extension Inst on GetInterface {
       fenix: fenix,
       tag: name,
       lateRemove: dep,
+      // When this registration is created by a page binding's
+      // `dependencies()`, remember which route declared it so the first
+      // resolution links the instance to the declaring page's route even
+      // if it happens under another route (e.g. a deep-linked child page
+      // running its ancestors' merged bindings).
+      bindingOwnerRouteName: RouterReportManager.instance.currentBindingOwnerName,
     );
   }
 
@@ -250,6 +257,7 @@ extension Inst on GetInterface {
         if (Get.smartManagement != SmartManagement.onlyBuilder) {
           RouterReportManager.instance.reportDependencyLinkedToRoute(
             _getKey(S, name),
+            ownerRouteName: dep.bindingOwnerRouteName,
           );
         }
       }
@@ -557,6 +565,77 @@ extension Inst on GetInterface {
     }
   }
 
+  /// Deletes the dependency registered under [key] on behalf of a disposed
+  /// route, keeping it alive when still-mounted widgets depend on it.
+  ///
+  /// Meant for internal usage of the `RouterReportManager`: when a route is
+  /// disposed, the instances linked to it are deleted. An instance that
+  /// still has widget subscribers (`GetBuilder`/`GetX` listeners) at that
+  /// moment may be shared with widgets of another, still-visible route —
+  /// e.g. a controller created during a rebuild of a lower route's subtree
+  /// while the disposed route was topmost — so its deletion is deferred to
+  /// the end of the frame, after the disposed route's own subtree has
+  /// unmounted and released its subscriptions:
+  ///
+  ///  * if no subscriber remains, the instance is deleted normally;
+  ///  * if subscribers remain, they belong to still-mounted widgets of
+  ///    other routes and the instance is kept alive (it is disposed later
+  ///    by its creator widget's unmount or an explicit delete).
+  ///
+  /// A registration superseded while the route was disposing (pending
+  /// `lateRemove` chain) is peeled synchronously, exactly like [delete].
+  void deleteRouteDependency(String key) {
+    final dep = _singl[key];
+    if (dep == null) {
+      Get.log('Instance "$key" already removed.', isError: true);
+      return;
+    }
+
+    final live = dep.dependency;
+    final hasSubscribers =
+        live is ListNotifierSingleMixin &&
+        !live.isDisposed &&
+        live.listenersLength > 0;
+    if (dep.lateRemove != null || !hasSubscribers) {
+      delete(key: key);
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final current = _singl[key];
+      if (current == null) return;
+      if (!identical(current, dep)) {
+        // The registration was superseded meanwhile (e.g. the same key was
+        // re-registered for a fresh route while this route was disposing).
+        // If the stale factory is pending in the lateRemove chain, peel it
+        // like the synchronous path would have; a fresh unrelated
+        // registration must not be touched.
+        var chain = current.lateRemove;
+        while (chain != null) {
+          if (identical(chain, dep)) {
+            delete(key: key);
+            return;
+          }
+          chain = chain.lateRemove;
+        }
+        return;
+      }
+      if (!live.isDisposed && live.listenersLength > 0) {
+        // The disposed route marked the key dirty on its way out; the
+        // instance is consciously kept alive for its remaining
+        // subscribers, so it must not be treated as stale by future
+        // registrations.
+        dep.isDirty = false;
+        Get.log(
+          'Instance "$key" was kept alive on route disposal: '
+          'widgets are still subscribed to it.',
+        );
+        return;
+      }
+      delete(key: key);
+    });
+  }
+
   /// Deletes all registered instances from memory, invokes their onDelete/close lifecycles,
   /// and cleans up resources.
   ///
@@ -713,6 +792,11 @@ class _InstanceBuilderFactory<S> {
 
   String? tag;
 
+  /// The name of the route whose page binding created this registration,
+  /// or `null` when it was not created by a page binding. Used to link the
+  /// instance to the declaring page's route on its first resolution.
+  final String? bindingOwnerRouteName;
+
   _InstanceBuilderFactory({
     required this.isSingleton,
     required this.builderFunc,
@@ -721,6 +805,7 @@ class _InstanceBuilderFactory<S> {
     required this.fenix,
     required this.tag,
     required this.lateRemove,
+    this.bindingOwnerRouteName,
   });
 
   void _showInitLog() {

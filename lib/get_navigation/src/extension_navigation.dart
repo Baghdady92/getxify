@@ -31,64 +31,6 @@ bool _isDialogRoute(Route<dynamic>? route) =>
 bool _isBottomSheetRoute(Route<dynamic>? route) =>
     route is GetModalBottomSheetRoute || route is ModalBottomSheetRoute;
 
-/// A [GetModalBottomSheetRoute] that guarantees a [MaterialLocalizations]
-/// ancestor for the sheet content.
-///
-/// Apps that don't install the material delegates (e.g. [GetCupertinoApp])
-/// have no [MaterialLocalizations] in their tree, which made
-/// `Get.bottomSheet` throw. When the localizations are missing, the sheet
-/// subtree is wrapped with [DefaultMaterialLocalizations]; under
-/// [GetMaterialApp] the inherited localizations are found and the route
-/// behaves exactly as before.
-class _MaterialLocalizedBottomSheetRoute<T> extends GetModalBottomSheetRoute<T> {
-  _MaterialLocalizedBottomSheetRoute({
-    super.builder,
-    super.theme,
-    super.barrierLabel,
-    super.backgroundColor,
-    super.elevation,
-    super.shape,
-    super.removeTop,
-    super.clipBehavior,
-    super.modalBarrierColor,
-    super.isDismissible,
-    super.enableDrag,
-    super.showDragHandle,
-    super.dragHandleColor,
-    super.dragHandleSize,
-    super.shadowColor,
-    super.surfaceTintColor,
-    required super.isScrollControlled,
-    super.settings,
-    super.enterBottomSheetDuration,
-    super.exitBottomSheetDuration,
-    super.curve,
-  });
-
-  @override
-  Widget buildPage(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) {
-    final page = super.buildPage(context, animation, secondaryAnimation);
-    final hasMaterialLocalizations =
-        Localizations.of<MaterialLocalizations>(
-          context,
-          MaterialLocalizations,
-        ) !=
-        null;
-    if (hasMaterialLocalizations) {
-      return page;
-    }
-    return Localizations.override(
-      context: context,
-      delegates: const [DefaultMaterialLocalizations.delegate],
-      child: page,
-    );
-  }
-}
-
 extension ExtensionBottomSheet on GetInterface {
   Future<T?> bottomSheet<T>(
     Widget bottomsheet, {
@@ -114,7 +56,7 @@ extension ExtensionBottomSheet on GetInterface {
     Color? surfaceTintColor,
   }) {
     return Navigator.of(overlayContext!, rootNavigator: useRootNavigator).push(
-      _MaterialLocalizedBottomSheetRoute<T>(
+      GetModalBottomSheetRoute<T>(
         builder: (_) => bottomsheet,
         theme: Theme.of(key.currentContext!),
         isScrollControlled: isScrollControlled,
@@ -1010,7 +952,7 @@ extension GetNavigationExt on GetInterface {
     // It can not be divided, because dialogs and bottomsheets can not be consecutive
     var topRoute = _topRoute(id: id);
     while (_isDialogRoute(topRoute) || _isBottomSheetRoute(topRoute)) {
-      closeOverlay(id: id);
+      _popOverlayRoute(topRoute!, id: id, result: null);
       topRoute = _topRoute(id: id);
     }
   }
@@ -1018,24 +960,28 @@ extension GetNavigationExt on GetInterface {
   /// Close all currently open dialogs, returning a [result] to each
   /// of them, if provided
   void closeAllDialogs<T>({String? id, T? result}) {
-    while (_isDialogRoute(_topRoute(id: id))) {
-      closeOverlay(id: id, result: result);
+    var topRoute = _topRoute(id: id);
+    while (_isDialogRoute(topRoute)) {
+      _popOverlayRoute(topRoute!, id: id, result: result);
+      topRoute = _topRoute(id: id);
     }
   }
 
   /// Close the currently open dialog, returning a [result], if provided
   void closeDialog<T>({String? id, T? result}) {
+    final topRoute = _topRoute(id: id);
     // Stop if there is no dialog open
-    if (!_isDialogRoute(_topRoute(id: id))) return;
+    if (!_isDialogRoute(topRoute)) return;
 
-    closeOverlay(id: id, result: result);
+    _popOverlayRoute(topRoute!, id: id, result: result);
   }
 
   void closeBottomSheet<T>({String? id, T? result}) {
+    final topRoute = _topRoute(id: id);
     // Stop if there is no bottomsheet open
-    if (!_isBottomSheetRoute(_topRoute(id: id))) return;
+    if (!_isBottomSheetRoute(topRoute)) return;
 
-    closeOverlay(id: id, result: result);
+    _popOverlayRoute(topRoute!, id: id, result: result);
   }
 
   /// Close the current overlay (e.g. dialog or bottom sheet) returning
@@ -1047,15 +993,26 @@ extension GetNavigationExt on GetInterface {
   /// the pop is retried once after the pending frame settles, so the actual
   /// overlay is closed instead of a page.
   void closeOverlay<T>({String? id, T? result}) {
-    final navigatorState = searchDelegate(id).navigatorKey.currentState;
-    if (navigatorState == null) return;
-
     final topRoute = _topRoute(id: id);
     if (topRoute == null) return;
 
+    _popOverlayRoute(topRoute, id: id, result: result);
+  }
+
+  /// Pops [topRoute] — the already-resolved topmost route of the navigator
+  /// matching [id] — following the [closeOverlay] semantics, without
+  /// scanning the navigator again.
+  void _popOverlayRoute<T>(
+    Route<dynamic> topRoute, {
+    required String? id,
+    required T? result,
+  }) {
+    final navigatorState = searchDelegate(id).navigatorKey.currentState;
+    if (navigatorState == null) return;
+
     if (topRoute.settings is Page) {
       engine.addPostFrameCallback((_) {
-        if (!GetRoot.treeInitialized) return;
+        if (_routingOrNull == null) return;
         final route = _topRoute(id: id);
         if (route != null && route.settings is! Page) {
           searchDelegate(id).navigatorKey.currentState?.pop(result);
@@ -1070,8 +1027,10 @@ extension GetNavigationExt on GetInterface {
   /// Close all currently open bottom sheets, returning a [result] to each
   /// of them, if provided
   void closeAllBottomSheets<T>({String? id, T? result}) {
-    while (_isBottomSheetRoute(_topRoute(id: id))) {
-      closeOverlay(id: id, result: result);
+    var topRoute = _topRoute(id: id);
+    while (_isBottomSheetRoute(topRoute)) {
+      _popOverlayRoute(topRoute!, id: id, result: result);
+      topRoute = _topRoute(id: id);
     }
   }
 
@@ -1110,12 +1069,12 @@ extension GetNavigationExt on GetInterface {
       bool closeCondition,
       void Function() closeAllFunction,
       void Function() closeSingleFunction, [
-      bool? isOpenCondition,
+      bool Function()? isOpenCondition,
     ]) {
       if (closeCondition) {
         if (closeAll) {
           closeAllFunction();
-        } else if (isOpenCondition == true) {
+        } else if (isOpenCondition?.call() == true) {
           closeSingleFunction();
         }
       }
@@ -1126,13 +1085,13 @@ extension GetNavigationExt on GetInterface {
       closeDialog,
       () => closeAllDialogs(id: id, result: result),
       () => closeOverlay(id: id, result: result),
-      _isDialogRoute(_topRoute(id: id)),
+      () => _isDialogRoute(_topRoute(id: id)),
     );
     handleClose(
       closeBottomSheet,
       () => closeAllBottomSheets(id: id, result: result),
       () => closeOverlay(id: id, result: result),
-      _isBottomSheetRoute(_topRoute(id: id)),
+      () => _isBottomSheetRoute(_topRoute(id: id)),
     );
   }
 
@@ -1362,7 +1321,7 @@ extension GetNavigationExt on GetInterface {
   /// check if snackbar is open,
   /// or false if routing is not initialized yet
   bool get isSnackbarOpen =>
-      GetRoot.treeInitialized &&
+      _routingOrNull != null &&
       SnackbarController.isSnackbarBeingShown; //routing.isSnackbar;
 
   void closeAllSnackbars() {
@@ -1375,12 +1334,11 @@ extension GetNavigationExt on GetInterface {
 
   /// check if dialog is open,
   /// or null if routing is not initialized yet
-  bool? get isDialogOpen => GetRoot.treeInitialized ? routing.isDialog : null;
+  bool? get isDialogOpen => _routingOrNull?.isDialog;
 
   /// check if bottomsheet is open,
   /// or null if routing is not initialized yet
-  bool? get isBottomSheetOpen =>
-      GetRoot.treeInitialized ? routing.isBottomSheet : null;
+  bool? get isBottomSheetOpen => _routingOrNull?.isBottomSheet;
 
   /// check a raw current route
   Route<dynamic>? get rawRoute => routing.route;
@@ -1447,6 +1405,10 @@ extension GetNavigationExt on GetInterface {
   }
 
   Routing get routing => _getxController.routing;
+
+  /// [routing] when the GetX widget tree is initialized, or `null` before
+  /// that (accessing [routing] earlier would throw).
+  Routing? get _routingOrNull => GetRoot.treeInitialized ? routing : null;
 
   bool get _shouldUseMock => GetTestMode.active && !GetRoot.treeInitialized;
 

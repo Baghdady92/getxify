@@ -135,6 +135,24 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
       ),
     );
     if (theme != null) bottomSheet = Theme(data: theme!, child: bottomSheet);
+    // Apps that don't install the material delegates (e.g. GetCupertinoApp)
+    // have no MaterialLocalizations in their tree, which made the sheet
+    // throw. When the localizations are missing, fall back to
+    // DefaultMaterialLocalizations; under GetMaterialApp the inherited
+    // localizations are found and the route behaves exactly as before.
+    final hasMaterialLocalizations =
+        Localizations.of<MaterialLocalizations>(
+          context,
+          MaterialLocalizations,
+        ) !=
+        null;
+    if (!hasMaterialLocalizations) {
+      bottomSheet = Localizations.override(
+        context: context,
+        delegates: const [DefaultMaterialLocalizations.delegate],
+        child: bottomSheet,
+      );
+    }
     return bottomSheet;
   }
 }

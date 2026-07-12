@@ -6,6 +6,20 @@ import 'package:flutter/scheduler.dart';
 
 import '../../get_state_manager.dart';
 
+/// Common interface of [GetSingleTickerProviderStateMixin] and
+/// [GetTickerProviderStateMixin]: a [TickerProvider] whose tickers follow
+/// the [TickerMode] of the widget subtree that forwards its dependency
+/// changes to [didChangeDependencies].
+///
+/// [GetX], [GetBuilder] and [Bind] check for this interface once instead of
+/// dispatching on each concrete mixin.
+abstract interface class GetTickerProvider implements TickerProvider {
+  /// Binds the tickers created by this provider to the [TickerMode] that
+  /// surrounds [context], so they are muted whenever tickers are disabled
+  /// in that subtree.
+  void didChangeDependencies(BuildContext context);
+}
+
 /// Used like `SingleTickerProviderMixin` but only with Get Controllers.
 /// Simplifies AnimationController creation inside GetxController.
 ///
@@ -27,7 +41,7 @@ import '../../get_state_manager.dart';
 ///  ...
 /// ```
 mixin GetSingleTickerProviderStateMixin on GetxController
-    implements TickerProvider {
+    implements GetTickerProvider {
   Ticker? _ticker;
   ValueListenable<TickerModeData>? _tickerModeNotifier;
 
@@ -70,6 +84,7 @@ mixin GetSingleTickerProviderStateMixin on GetxController
   /// controllers they manage; it only needs to be called manually when the
   /// controller is used with a custom widget that provides its own
   /// [BuildContext].
+  @override
   void didChangeDependencies(BuildContext context) {
     _updateTickerModeNotifier(context);
     _updateTicker();
@@ -141,7 +156,8 @@ mixin GetSingleTickerProviderStateMixin on GetxController
 ///  }
 ///  ...
 /// ```
-mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
+mixin GetTickerProviderStateMixin on GetxController
+    implements GetTickerProvider {
   Set<Ticker>? _tickers;
   ValueListenable<TickerModeData>? _tickerModeNotifier;
 
@@ -178,6 +194,7 @@ mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
   /// controllers they manage; it only needs to be called manually when the
   /// controller is used with a custom widget that provides its own
   /// [BuildContext].
+  @override
   void didChangeDependencies(BuildContext context) {
     _updateTickerModeNotifier(context);
     _updateTickers();
