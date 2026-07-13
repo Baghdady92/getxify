@@ -19,8 +19,7 @@ void main() {
 
   tearDown(Get.reset);
 
-  test('Bind.putAsync awaits the builder and registers the instance',
-      () async {
+  test('Bind.putAsync awaits the builder and registers the instance', () async {
     final bind = await Bind.putAsync<AsyncInitController>(() async {
       await Future<void>.delayed(const Duration(milliseconds: 10));
       return AsyncInitController(42);

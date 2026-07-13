@@ -75,8 +75,7 @@ void main() {
           GetPage(name: '/first', page: () => const Text('first')),
           GetPage(
             name: '/open',
-            page: () =>
-                const PopScope(canPop: true, child: Text('open')),
+            page: () => const PopScope(canPop: true, child: Text('open')),
           ),
         ],
       ),

@@ -27,8 +27,7 @@ void main() {
   // guard returned early in the lateRemove branch, leaking the stale
   // service (onClose never ran) and leaving `lateRemove` set forever, so
   // the live registration became undeletable without force:true.
-  test(
-      'stale superseded service in lateRemove is disposed by a non-force '
+  test('stale superseded service in lateRemove is disposed by a non-force '
       'delete and the live registration stays deletable', () async {
     Get.put(LifecycleService());
     final first = Get.find<LifecycleService>();
@@ -48,20 +47,28 @@ void main() {
     // The old route disposing must peel off the STALE service even though
     // it is a GetxService: it has already been replaced and is garbage.
     final removed = Get.delete<LifecycleService>();
-    expect(removed, false,
-        reason: 'the key must stay registered for the live service');
-    expect(first.closes, 1,
-        reason: 'the stale superseded service must receive onClose');
-    expect(second.closes, 0,
-        reason: 'the live service must not be touched');
+    expect(
+      removed,
+      false,
+      reason: 'the key must stay registered for the live service',
+    );
+    expect(
+      first.closes,
+      1,
+      reason: 'the stale superseded service must receive onClose',
+    );
+    expect(second.closes, 0, reason: 'the live service must not be touched');
     expect(Get.isRegistered<LifecycleService>(), true);
     expect(identical(Get.find<LifecycleService>(), second), true);
 
     // The lateRemove chain is now clear, so the live service is protected
     // by the normal service guard again (non-force delete is refused)...
     final casualDelete = Get.delete<LifecycleService>();
-    expect(casualDelete, false,
-        reason: 'a live GetxService must survive a casual delete');
+    expect(
+      casualDelete,
+      false,
+      reason: 'a live GetxService must survive a casual delete',
+    );
     expect(second.closes, 0);
     expect(Get.isRegistered<LifecycleService>(), true);
 
@@ -77,8 +84,7 @@ void main() {
 
   // Two supersessions in flight: each pending disposal peels the oldest
   // stale service; the live one keeps its guard.
-  test('nested stale services in lateRemove are peeled oldest-first',
-      () async {
+  test('nested stale services in lateRemove are peeled oldest-first', () async {
     Get.put(LifecycleService());
     final first = Get.find<LifecycleService>();
 

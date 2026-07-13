@@ -87,10 +87,8 @@ void main() {
           enabled: false,
           child: GetX<_MultiController>(
             init: _MultiController(),
-            builder: (c) => Text(
-              '${c.count.value}',
-              textDirection: TextDirection.ltr,
-            ),
+            builder: (c) =>
+                Text('${c.count.value}', textDirection: TextDirection.ltr),
           ),
         ),
       );
@@ -102,10 +100,8 @@ void main() {
         TickerMode(
           enabled: true,
           child: GetX<_MultiController>(
-            builder: (c) => Text(
-              '${c.count.value}',
-              textDirection: TextDirection.ltr,
-            ),
+            builder: (c) =>
+                Text('${c.count.value}', textDirection: TextDirection.ltr),
           ),
         ),
       );

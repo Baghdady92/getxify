@@ -40,10 +40,7 @@ void main() {
     });
 
     test('does not report macOS on Windows', () {
-      expect(
-        WebPlatformDetect.isMacOS(windowsAppVersion, 'Win32', 0),
-        isFalse,
-      );
+      expect(WebPlatformDetect.isMacOS(windowsAppVersion, 'Win32', 0), isFalse);
     });
 
     test('iPadOS 13+ masquerading as MacIntel is iOS, not macOS', () {

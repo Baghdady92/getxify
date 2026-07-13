@@ -109,28 +109,27 @@ void main() {
     },
   );
 
-  testWidgets(
-    'popping back to the nested shell restores its preserved child',
-    (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
+  testWidgets('popping back to the nested shell restores its preserved child', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
 
-      Get.rootController.rootDelegate.toNamed('/home/news');
-      await tester.pumpAndSettle();
-      Get.rootController.rootDelegate.toNamed('/setting');
-      await tester.pumpAndSettle();
+    Get.rootController.rootDelegate.toNamed('/home/news');
+    await tester.pumpAndSettle();
+    Get.rootController.rootDelegate.toNamed('/setting');
+    await tester.pumpAndSettle();
 
-      Get.rootController.rootDelegate.back();
-      await tester.pumpAndSettle();
+    Get.rootController.rootDelegate.back();
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      // The nested navigator kept the child selected before /setting was
-      // pushed; before the fix the shell was recreated and reset to its
-      // initialRoute.
-      expect(find.text('news-view'), findsOneWidget);
-      expect(find.text('setting-view'), findsNothing);
-      expect(HomeShell.initCount, 1);
-      expect(HomeShell.disposeCount, 0);
-    },
-  );
+    expect(tester.takeException(), isNull);
+    // The nested navigator kept the child selected before /setting was
+    // pushed; before the fix the shell was recreated and reset to its
+    // initialRoute.
+    expect(find.text('news-view'), findsOneWidget);
+    expect(find.text('setting-view'), findsNothing);
+    expect(HomeShell.initCount, 1);
+    expect(HomeShell.disposeCount, 0);
+  });
 }

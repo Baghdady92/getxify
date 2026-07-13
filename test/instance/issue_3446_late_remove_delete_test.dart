@@ -29,8 +29,7 @@ void main() {
   // factory is kept in `lateRemove`. When the old route finally disposes,
   // `Get.delete` must dispose ONLY the superseded instance and keep the
   // fresh registration (and its live controller) untouched.
-  test(
-      'delete disposes only the superseded (lateRemove) instance and '
+  test('delete disposes only the superseded (lateRemove) instance and '
       'keeps the fresh registration alive', () async {
     Get.lazyPut(LifecycleController.new);
     final first = Get.find<LifecycleController>();
@@ -49,8 +48,11 @@ void main() {
     // Simulates the old route disposing (`_removeDependencyByRoute`).
     final removed = Get.delete<LifecycleController>();
 
-    expect(removed, false,
-        reason: 'the key must stay registered for the new route');
+    expect(
+      removed,
+      false,
+      reason: 'the key must stay registered for the new route',
+    );
     expect(first.closes, 1);
     expect(second.closes, 0);
     expect(Get.isRegistered<LifecycleController>(), true);
@@ -108,31 +110,33 @@ void main() {
   // dirty flag. Otherwise a later re-registration of the same key would
   // treat the retained factory as stale, chain it in `lateRemove`, and the
   // resurrected live controller would never receive `onClose`.
-  test('fenix delete resets the dirty flag so the factory can be reused',
-      () async {
-    Get.lazyPut(LifecycleController.new, fenix: true);
-    final first = Get.find<LifecycleController>();
+  test(
+    'fenix delete resets the dirty flag so the factory can be reused',
+    () async {
+      Get.lazyPut(LifecycleController.new, fenix: true);
+      final first = Get.find<LifecycleController>();
 
-    Get.markAsDirty<LifecycleController>();
-    Get.delete<LifecycleController>();
+      Get.markAsDirty<LifecycleController>();
+      Get.delete<LifecycleController>();
 
-    expect(first.closes, 1);
-    expect(Get.isRegistered<LifecycleController>(), true);
+      expect(first.closes, 1);
+      expect(Get.isRegistered<LifecycleController>(), true);
 
-    // Simulates re-entering the route: the binding registers the key
-    // again and the page resolves the controller.
-    Get.lazyPut(LifecycleController.new, fenix: true);
-    final second = Get.find<LifecycleController>();
-    expect(identical(first, second), false);
-    expect(second.inits, 1);
+      // Simulates re-entering the route: the binding registers the key
+      // again and the page resolves the controller.
+      Get.lazyPut(LifecycleController.new, fenix: true);
+      final second = Get.find<LifecycleController>();
+      expect(identical(first, second), false);
+      expect(second.inits, 1);
 
-    // Popping the route again must close the resurrected instance.
-    Get.markAsDirty<LifecycleController>();
-    Get.delete<LifecycleController>();
+      // Popping the route again must close the resurrected instance.
+      Get.markAsDirty<LifecycleController>();
+      Get.delete<LifecycleController>();
 
-    expect(second.closes, 1);
-    expect(Get.isRegistered<LifecycleController>(), true);
+      expect(second.closes, 1);
+      expect(Get.isRegistered<LifecycleController>(), true);
 
-    Get.reset();
-  });
+      Get.reset();
+    },
+  );
 }

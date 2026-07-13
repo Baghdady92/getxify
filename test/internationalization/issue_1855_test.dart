@@ -111,17 +111,19 @@ void main() {
     expect('songs'.trPluralCases(songCases, 111, ['111']), '111 песен');
   });
 
-  test('custom resolver enables Arabic plural rules including zero and two',
-      () {
-    Get.locale = const Locale('ar', 'SA');
-    Get.pluralResolver = arabicRule;
+  test(
+    'custom resolver enables Arabic plural rules including zero and two',
+    () {
+      Get.locale = const Locale('ar', 'SA');
+      Get.pluralResolver = arabicRule;
 
-    expect('songs'.trPluralCases(songCases, 0), 'لا أغاني');
-    expect('songs'.trPluralCases(songCases, 1), 'أغنية واحدة');
-    expect('songs'.trPluralCases(songCases, 2), 'أغنيتان');
-    expect('songs'.trPluralCases(songCases, 3, ['3']), '3 أغانٍ');
-    expect('songs'.trPluralCases(songCases, 11, ['11']), '11 أغنية');
-  });
+      expect('songs'.trPluralCases(songCases, 0), 'لا أغاني');
+      expect('songs'.trPluralCases(songCases, 1), 'أغنية واحدة');
+      expect('songs'.trPluralCases(songCases, 2), 'أغنيتان');
+      expect('songs'.trPluralCases(songCases, 3, ['3']), '3 أغانٍ');
+      expect('songs'.trPluralCases(songCases, 11, ['11']), '11 أغنية');
+    },
+  );
 
   test('resolver receives the count and the active locale', () {
     int? seenCount;

@@ -12,24 +12,26 @@ import 'package:getxify/getxify.dart';
 
 void main() {
   testWidgets(
-      'Get.closeCurrentSnackbar(withAnimations: false) closes immediately',
-      (tester) async {
-    await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
+    'Get.closeCurrentSnackbar(withAnimations: false) closes immediately',
+    (tester) async {
+      await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
-    Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('hello'), findsOneWidget);
+      Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('hello'), findsOneWidget);
 
-    await Get.closeCurrentSnackbar(withAnimations: false);
-    await tester.pump();
+      await Get.closeCurrentSnackbar(withAnimations: false);
+      await tester.pump();
 
-    expect(find.text('hello'), findsNothing);
-    expect(Get.isSnackbarOpen, false);
-  });
+      expect(find.text('hello'), findsNothing);
+      expect(Get.isSnackbarOpen, false);
+    },
+  );
 
-  testWidgets('Get.closeCurrentSnackbar() still animates by default',
-      (tester) async {
+  testWidgets('Get.closeCurrentSnackbar() still animates by default', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
     Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
@@ -48,19 +50,20 @@ void main() {
   });
 
   testWidgets(
-      'Get.closeAllSnackbars(withAnimations: false) closes immediately',
-      (tester) async {
-    await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
+    'Get.closeAllSnackbars(withAnimations: false) closes immediately',
+    (tester) async {
+      await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
-    Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('hello'), findsOneWidget);
+      Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('hello'), findsOneWidget);
 
-    Get.closeAllSnackbars(withAnimations: false);
-    await tester.pump();
+      Get.closeAllSnackbars(withAnimations: false);
+      await tester.pump();
 
-    expect(find.text('hello'), findsNothing);
-    expect(Get.isSnackbarOpen, false);
-  });
+      expect(find.text('hello'), findsNothing);
+      expect(Get.isSnackbarOpen, false);
+    },
+  );
 }

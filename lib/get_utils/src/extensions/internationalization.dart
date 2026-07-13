@@ -216,7 +216,9 @@ extension Trans on String {
   // Picks the translation key for [count] from [caseKeys], falling back to
   // [PluralCase.other] and finally to this key itself.
   String _pluralKeyFor(Map<PluralCase, String> caseKeys, int count) {
-    return caseKeys[_pluralCaseFor(count)] ?? caseKeys[PluralCase.other] ?? this;
+    return caseKeys[_pluralCaseFor(count)] ??
+        caseKeys[PluralCase.other] ??
+        this;
   }
 
   /// Translates the plural form of this key that matches [count], supporting

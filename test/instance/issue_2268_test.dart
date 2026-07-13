@@ -52,15 +52,17 @@ void main() {
     Get.reset();
   });
 
-  test('Get.replace works over a never-initialized fenix registration',
-      () async {
-    Get.lazyPut<ParentController>(() => ParentController(), fenix: true);
+  test(
+    'Get.replace works over a never-initialized fenix registration',
+    () async {
+      Get.lazyPut<ParentController>(() => ParentController(), fenix: true);
 
-    Get.replace<ParentController>(ChildController());
+      Get.replace<ParentController>(ChildController());
 
-    expect(Get.find<ParentController>(), isA<ChildController>());
-    Get.reset();
-  });
+      expect(Get.find<ParentController>(), isA<ChildController>());
+      Get.reset();
+    },
+  );
 
   test('Get.lazyReplace works over a fenix registration and the new builder '
       'resurrects', () async {

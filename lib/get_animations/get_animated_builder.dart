@@ -156,7 +156,8 @@ class GetAnimatedBuilderState<T> extends State<GetAnimatedBuilder<T>>
       _controller.duration = widget.duration;
     }
 
-    final tweenChanged = widget.tween.begin != oldWidget.tween.begin ||
+    final tweenChanged =
+        widget.tween.begin != oldWidget.tween.begin ||
         widget.tween.end != oldWidget.tween.end;
 
     if (tweenChanged || widget.curve != oldWidget.curve) {

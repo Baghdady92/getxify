@@ -62,10 +62,7 @@ void main() {
       expect(find.text('settings-view'), findsOneWidget);
       // Before the fix the outlet anchored at '/' also picked the settings
       // page, mounting a second (offstage) copy inside the root shell.
-      expect(
-        find.text('settings-view', skipOffstage: false),
-        findsOneWidget,
-      );
+      expect(find.text('settings-view', skipOffstage: false), findsOneWidget);
     },
   );
 }

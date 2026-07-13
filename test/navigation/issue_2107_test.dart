@@ -135,9 +135,7 @@ void main() {
       final delegate = Get.rootController.rootDelegate;
       var navigationCompleted = false;
       // ignore: unawaited_futures
-      delegate
-          .toNamed('/home/tab2')
-          .then((_) => navigationCompleted = true);
+      delegate.toNamed('/home/tab2').then((_) => navigationCompleted = true);
       await tester.pumpAndSettle();
       expect(find.text('tab2-view'), findsOneWidget);
       expect(delegate.activePages.length, 2);
@@ -162,112 +160,108 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a declarative back still works and does not double-pop '
-    '(feedback-loop guard)',
-    (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
+  testWidgets('a declarative back still works and does not double-pop '
+      '(feedback-loop guard)', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
 
-      final delegate = Get.rootController.rootDelegate;
-      delegate.toNamed('/home/tab2');
-      await tester.pumpAndSettle();
-      delegate.toNamed('/home/products');
-      await tester.pumpAndSettle();
-      expect(delegate.activePages.length, 3);
-      expect(find.text('products-view'), findsOneWidget);
+    final delegate = Get.rootController.rootDelegate;
+    delegate.toNamed('/home/tab2');
+    await tester.pumpAndSettle();
+    delegate.toNamed('/home/products');
+    await tester.pumpAndSettle();
+    expect(delegate.activePages.length, 3);
+    expect(find.text('products-view'), findsOneWidget);
 
-      // Removes the products entry from the history; the outlet navigator
-      // then removes its route through a declarative page-list update, which
-      // must NOT be reported back as a second pop.
-      delegate.back();
-      await tester.pumpAndSettle();
+    // Removes the products entry from the history; the outlet navigator
+    // then removes its route through a declarative page-list update, which
+    // must NOT be reported back as a second pop.
+    delegate.back();
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('products-view'), findsNothing);
-      expect(find.text('tab2-view'), findsOneWidget);
-      expect(delegate.activePages.length, 2);
-      expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab2');
+    expect(tester.takeException(), isNull);
+    expect(find.text('products-view'), findsNothing);
+    expect(find.text('tab2-view'), findsOneWidget);
+    expect(delegate.activePages.length, 2);
+    expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab2');
 
-      delegate.back();
-      await tester.pumpAndSettle();
+    delegate.back();
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('tab1-view'), findsOneWidget);
-      expect(delegate.activePages.length, 1);
-      expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab1');
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(find.text('tab1-view'), findsOneWidget);
+    expect(delegate.activePages.length, 1);
+    expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab1');
+  });
 
-  testWidgets(
-    'a real back-swipe drag pops between outlet siblings',
-    (tester) async {
-      // The Cupertino transition tracks the drag with a horizontal slide
-      // (the iOS behavior #2107 is about); the default test-platform zoom
-      // transition does not engage the swipe even at the root navigator.
-      await tester.pumpWidget(
-        GetMaterialApp(
-          initialRoute: '/home/tab1',
-          getPages: [
-            GetPage(
-              name: '/home',
-              participatesInRootNavigator: true,
-              page: () => Scaffold(
-                body: GetRouterOutlet(
-                  anchorRoute: '/home',
-                  initialRoute: '/home/tab1',
-                ),
+  testWidgets('a real back-swipe drag pops between outlet siblings', (
+    tester,
+  ) async {
+    // The Cupertino transition tracks the drag with a horizontal slide
+    // (the iOS behavior #2107 is about); the default test-platform zoom
+    // transition does not engage the swipe even at the root navigator.
+    await tester.pumpWidget(
+      GetMaterialApp(
+        initialRoute: '/home/tab1',
+        getPages: [
+          GetPage(
+            name: '/home',
+            participatesInRootNavigator: true,
+            page: () => Scaffold(
+              body: GetRouterOutlet(
+                anchorRoute: '/home',
+                initialRoute: '/home/tab1',
               ),
-              children: [
-                GetPage(
-                  name: '/tab1',
-                  popGesture: true,
-                  transition: Transition.cupertino,
-                  page: () =>
-                      const Scaffold(body: Center(child: Text('tab1-view'))),
-                ),
-                GetPage(
-                  name: '/tab2',
-                  popGesture: true,
-                  transition: Transition.cupertino,
-                  page: () =>
-                      const Scaffold(body: Center(child: Text('tab2-view'))),
-                ),
-              ],
             ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+            children: [
+              GetPage(
+                name: '/tab1',
+                popGesture: true,
+                transition: Transition.cupertino,
+                page: () =>
+                    const Scaffold(body: Center(child: Text('tab1-view'))),
+              ),
+              GetPage(
+                name: '/tab2',
+                popGesture: true,
+                transition: Transition.cupertino,
+                page: () =>
+                    const Scaffold(body: Center(child: Text('tab2-view'))),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final delegate = Get.rootController.rootDelegate;
-      delegate.toNamed('/home/tab2');
-      await tester.pumpAndSettle();
-      expect(find.text('tab2-view'), findsOneWidget);
-      expect(delegate.activePages.length, 2);
+    final delegate = Get.rootController.rootDelegate;
+    delegate.toNamed('/home/tab2');
+    await tester.pumpAndSettle();
+    expect(find.text('tab2-view'), findsOneWidget);
+    expect(delegate.activePages.length, 2);
 
-      // Drag the top sibling far past the midpoint and release: the page
-      // must track the finger and the release must pop it.
-      final gesture = await tester.startGesture(const Offset(200, 300));
-      await gesture.moveBy(const Offset(300, 0));
-      await tester.pump();
-      expect(
-        tester.getTopLeft(find.text('tab2-view')).dx,
-        greaterThan(300),
-        reason: 'the top sibling must track the drag',
-      );
-      await gesture.moveBy(const Offset(300, 0));
-      await tester.pump();
-      await gesture.up();
-      await tester.pumpAndSettle();
+    // Drag the top sibling far past the midpoint and release: the page
+    // must track the finger and the release must pop it.
+    final gesture = await tester.startGesture(const Offset(200, 300));
+    await gesture.moveBy(const Offset(300, 0));
+    await tester.pump();
+    expect(
+      tester.getTopLeft(find.text('tab2-view')).dx,
+      greaterThan(300),
+      reason: 'the top sibling must track the drag',
+    );
+    await gesture.moveBy(const Offset(300, 0));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('tab2-view'), findsNothing);
-      expect(find.text('tab1-view'), findsOneWidget);
-      expect(delegate.activePages.length, 1);
-      expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab1');
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(find.text('tab2-view'), findsNothing);
+    expect(find.text('tab1-view'), findsOneWidget);
+    expect(delegate.activePages.length, 1);
+    expect(delegate.currentConfiguration?.pageSettings?.name, '/home/tab1');
+  });
 
   testWidgets(
     'an imperative pop of a deep-linked branch (single history entry) '

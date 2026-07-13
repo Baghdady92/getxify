@@ -34,7 +34,10 @@ GetMaterialApp buildApp() {
     ),
     initialRoute: '/first',
     getPages: [
-      GetPage(name: '/first', page: () => const Scaffold(body: Text('first'))),
+      GetPage(
+        name: '/first',
+        page: () => const Scaffold(body: Text('first')),
+      ),
       GetPage(
         name: '/second',
         page: () => const Scaffold(body: Text('second')),
@@ -57,19 +60,15 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
 
-  testWidgets(
-    'routes without an explicit transition honor the theme '
-    'pageTransitionsTheme on iOS',
-    (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
+  testWidgets('routes without an explicit transition honor the theme '
+      'pageTransitionsTheme on iOS', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
 
-      Get.toNamed('/second');
-      await tester.pumpAndSettle();
+    Get.toNamed('/second');
+    await tester.pumpAndSettle();
 
-      expect(find.text('second'), findsOneWidget);
-      expect(find.byKey(markerKey), findsWidgets);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-  );
+    expect(find.text('second'), findsOneWidget);
+    expect(find.byKey(markerKey), findsWidgets);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 }

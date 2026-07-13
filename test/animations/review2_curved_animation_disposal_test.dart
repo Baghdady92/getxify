@@ -33,41 +33,38 @@ void main() {
     );
   }
 
-  testWidgets(
-    'rebuilding with a changed curve and tween swaps the animation, '
-    'still renders correct values, and disposes cleanly',
-    (tester) async {
-      double? lastValue;
+  testWidgets('rebuilding with a changed curve and tween swaps the animation, '
+      'still renders correct values, and disposes cleanly', (tester) async {
+    double? lastValue;
 
-      await tester.pumpWidget(
-        build(end: 1.0, curve: Curves.linear, onValue: (v) => lastValue = v),
-      );
-      await tester.pumpAndSettle();
-      expect(lastValue, 1.0);
+    await tester.pumpWidget(
+      build(end: 1.0, curve: Curves.linear, onValue: (v) => lastValue = v),
+    );
+    await tester.pumpAndSettle();
+    expect(lastValue, 1.0);
 
-      // Changing curve and tween exercises the didUpdateWidget replacement
-      // path: the old CurvedAnimation is disposed and the new tween/curve
-      // pair drives the builder (the controller stayed completed, so the
-      // new tween's end value must flow through).
-      await tester.pumpWidget(
-        build(end: 2.0, curve: Curves.easeIn, onValue: (v) => lastValue = v),
-      );
-      await tester.pumpAndSettle();
-      expect(lastValue, 2.0);
+    // Changing curve and tween exercises the didUpdateWidget replacement
+    // path: the old CurvedAnimation is disposed and the new tween/curve
+    // pair drives the builder (the controller stayed completed, so the
+    // new tween's end value must flow through).
+    await tester.pumpWidget(
+      build(end: 2.0, curve: Curves.easeIn, onValue: (v) => lastValue = v),
+    );
+    await tester.pumpAndSettle();
+    expect(lastValue, 2.0);
 
-      // Changing only the curve exercises the replacement path once more.
-      await tester.pumpWidget(
-        build(end: 2.0, curve: Curves.easeOut, onValue: (v) => lastValue = v),
-      );
-      await tester.pumpAndSettle();
-      expect(lastValue, 2.0);
+    // Changing only the curve exercises the replacement path once more.
+    await tester.pumpWidget(
+      build(end: 2.0, curve: Curves.easeOut, onValue: (v) => lastValue = v),
+    );
+    await tester.pumpAndSettle();
+    expect(lastValue, 2.0);
 
-      // Unmount: dispose() must tear down the CurvedAnimation and the
-      // controller without throwing (double-dispose or use-after-dispose).
-      await tester.pumpWidget(const SizedBox.shrink());
-      expect(tester.takeException(), isNull);
-    },
-  );
+    // Unmount: dispose() must tear down the CurvedAnimation and the
+    // controller without throwing (double-dispose or use-after-dispose).
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('every CurvedAnimation created by the builder is disposed', (
     tester,

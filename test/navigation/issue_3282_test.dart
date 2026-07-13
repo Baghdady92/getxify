@@ -42,8 +42,10 @@ void main() {
   test('GetPageRoute honors an explicit allowSnapshotting argument', () {
     expect(GetPageRoute(page: Container.new).allowSnapshotting, isTrue);
     expect(
-      GetPageRoute(page: Container.new, allowSnapshotting: false)
-          .allowSnapshotting,
+      GetPageRoute(
+        page: Container.new,
+        allowSnapshotting: false,
+      ).allowSnapshotting,
       isFalse,
     );
   });

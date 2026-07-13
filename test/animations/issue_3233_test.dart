@@ -52,9 +52,11 @@ void main() {
     ) async {
       await tester.pumpWidget(
         _Wrapper(
-          child: Container(width: 50, height: 50, color: Colors.red).blur(
-            duration: const Duration(milliseconds: 100),
-          ),
+          child: Container(
+            width: 50,
+            height: 50,
+            color: Colors.red,
+          ).blur(duration: const Duration(milliseconds: 100)),
         ),
       );
 

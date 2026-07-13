@@ -90,8 +90,7 @@ extension ExtensionBottomSheet on GetInterface {
         clipBehavior: clipBehavior,
         isDismissible: isDismissible,
         modalBarrierColor: barrierColor,
-        settings:
-            settings ?? RouteSettings(name: name, arguments: arguments),
+        settings: settings ?? RouteSettings(name: name, arguments: arguments),
         enableDrag: enableDrag,
         enterBottomSheetDuration:
             enterBottomSheetDuration ?? const Duration(milliseconds: 250),
@@ -1421,7 +1420,8 @@ extension GetNavigationExt on GetInterface {
   /// skipping its exit animation.
   Future<void> closeCurrentSnackbar({bool withAnimations = true}) async {
     await SnackbarController.closeCurrentSnackbar(
-        withAnimations: withAnimations);
+      withAnimations: withAnimations,
+    );
   }
 
   /// check if dialog is open,

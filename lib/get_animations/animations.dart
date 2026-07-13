@@ -56,7 +56,7 @@ class OpacityAnimation extends GetAnimatedBuilder<double> {
   }) : super(
          tween: Tween<double>(begin: begin, end: end),
          builder: (context, value, child) {
-            return Opacity(opacity: value, child: child!);
+           return Opacity(opacity: value, child: child!);
          },
        );
 }

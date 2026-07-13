@@ -75,18 +75,15 @@ void main() {
     },
   );
 
-  testWidgets(
-    'an async middleware stopping the navigation degrades to the '
-    'not-found page',
-    (tester) async {
-      await tester.pumpWidget(buildApp(middlewares: [AsyncStopGuard()]));
-      await tester.pumpAndSettle();
+  testWidgets('an async middleware stopping the navigation degrades to the '
+      'not-found page', (tester) async {
+    await tester.pumpWidget(buildApp(middlewares: [AsyncStopGuard()]));
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('guarded-view'), findsNothing);
-      expect(find.text('Route not found'), findsOneWidget);
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(find.text('guarded-view'), findsNothing);
+    expect(find.text('Route not found'), findsOneWidget);
+  });
 
   testWidgets(
     'an async middleware keeping the route settles without a rebuild loop',

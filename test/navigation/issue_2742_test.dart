@@ -11,35 +11,32 @@ import 'package:getxify/getxify.dart';
 void main() {
   tearDown(Get.reset);
 
-  testWidgets(
-    'anchorless outlet does not reuse the root navigator GlobalKey',
-    (tester) async {
-      await tester.pumpWidget(
-        GetMaterialApp(
-          initialRoute: '/',
-          getPages: [
-            GetPage(
-              name: '/',
-              page: () => Scaffold(
-                body: GetRouterOutlet(initialRoute: '/home'),
-              ),
-              children: [
-                GetPage(name: '/home', page: () => const Text('home-view')),
-              ],
-            ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('anchorless outlet does not reuse the root navigator GlobalKey', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      GetMaterialApp(
+        initialRoute: '/',
+        getPages: [
+          GetPage(
+            name: '/',
+            page: () => Scaffold(body: GetRouterOutlet(initialRoute: '/home')),
+            children: [
+              GetPage(name: '/home', page: () => const Text('home-view')),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('home-view'), findsOneWidget);
-      // Exactly one navigator carries the root delegate's GlobalKey.
-      final rootKey = Get.rootController.rootDelegate.navigatorKey;
-      final keyed = tester
-          .widgetList<Navigator>(find.bySubtype<Navigator>())
-          .where((navigator) => navigator.key == rootKey);
-      expect(keyed.length, 1);
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(find.text('home-view'), findsOneWidget);
+    // Exactly one navigator carries the root delegate's GlobalKey.
+    final rootKey = Get.rootController.rootDelegate.navigatorKey;
+    final keyed = tester
+        .widgetList<Navigator>(find.bySubtype<Navigator>())
+        .where((navigator) => navigator.key == rootKey);
+    expect(keyed.length, 1);
+  });
 }

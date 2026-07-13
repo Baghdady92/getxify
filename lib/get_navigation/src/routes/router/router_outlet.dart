@@ -117,9 +117,7 @@ class GetRouterOutlet extends RouterOutlet<GetDelegate, RouteDecoder> {
              ret = config.currentTreeBranch
                  .skip(length)
                  .take(length)
-                 .takeWhile(
-                   (page) => page.participatesInRootNavigator != true,
-                 );
+                 .takeWhile((page) => page.participatesInRootNavigator != true);
            } else {
              ret = _cumulativeAnchorStack(
                config,
@@ -408,7 +406,10 @@ class _SharedNavigatorKeyScope extends StatefulWidget {
 class _SharedNavigatorKeyScopeState extends State<_SharedNavigatorKeyScope> {
   /// Mounted scopes per shared key, oldest first; the last entry owns the
   /// key. Entries remove themselves on disposal, so the map cannot leak.
-  static final Map<GlobalKey<NavigatorState>, List<_SharedNavigatorKeyScopeState>>
+  static final Map<
+    GlobalKey<NavigatorState>,
+    List<_SharedNavigatorKeyScopeState>
+  >
   _registrants = {};
 
   /// Fallback key for the frames in which this scope does not hold the

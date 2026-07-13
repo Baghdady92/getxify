@@ -26,10 +26,7 @@ void main() {
     );
 
     Get.bottomSheet(
-      const SizedBox(
-        height: 200,
-        child: Center(child: Icon(Icons.music_note)),
-      ),
+      const SizedBox(height: 200, child: Center(child: Icon(Icons.music_note))),
     );
     await tester.pumpAndSettle();
 

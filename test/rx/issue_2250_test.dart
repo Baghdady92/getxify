@@ -6,19 +6,21 @@ void main() {
   // assignAll on an RxSet notified listeners twice: once for the internal
   // clear() (with an empty set) and once for the addAll(). Listeners must
   // receive exactly one event, carrying the final contents.
-  test('RxSet.assignAll notifies exactly once with the final contents',
-      () async {
-    final set = {1, 2, 3}.obs;
-    final events = <Set<int>>[];
-    set.listen((value) => events.add(Set<int>.of(value)));
+  test(
+    'RxSet.assignAll notifies exactly once with the final contents',
+    () async {
+      final set = {1, 2, 3}.obs;
+      final events = <Set<int>>[];
+      set.listen((value) => events.add(Set<int>.of(value)));
 
-    set.assignAll({4, 5});
-    await Future.delayed(Duration.zero);
+      set.assignAll({4, 5});
+      await Future.delayed(Duration.zero);
 
-    expect(events.length, 1);
-    expect(events.single, {4, 5});
-    expect(set, {4, 5});
-  });
+      expect(events.length, 1);
+      expect(events.single, {4, 5});
+      expect(set, {4, 5});
+    },
+  );
 
   test('RxSet.assign notifies exactly once with the final contents', () async {
     final set = {1, 2, 3}.obs;

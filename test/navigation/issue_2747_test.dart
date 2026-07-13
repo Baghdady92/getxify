@@ -8,8 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  testWidgets('left bar indicator is clipped to the borderRadius',
-      (tester) async {
+  testWidgets('left bar indicator is clipped to the borderRadius', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -40,20 +41,14 @@ void main() {
     final indicator = find.byWidgetPredicate(
       (widget) => widget is Container && widget.color == Colors.red,
     );
-    expect(
-      find.descendant(of: clip, matching: indicator),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: clip, matching: indicator), findsOneWidget);
   });
 
   testWidgets('no clip is added when borderRadius is zero', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: GetSnackBar(
-            message: 'msg',
-            leftBarIndicatorColor: Colors.red,
-          ),
+          body: GetSnackBar(message: 'msg', leftBarIndicatorColor: Colors.red),
         ),
       ),
     );

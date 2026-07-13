@@ -369,8 +369,9 @@ class SnackbarController {
   /// When [withAnimations] is false, the current snackbar is removed
   /// immediately, without playing its exit animation.
   static Future<void> cancelAllSnackbars({bool withAnimations = true}) async {
-    await GetRootState.controller.config.snackBarQueue
-        .cancelAllJobs(withAnimations: withAnimations);
+    await GetRootState.controller.config.snackBarQueue.cancelAllJobs(
+      withAnimations: withAnimations,
+    );
   }
 
   /// Closes the snackbar currently being shown.
@@ -378,8 +379,9 @@ class SnackbarController {
   /// When [withAnimations] is false, the snackbar is removed immediately,
   /// without playing its exit animation.
   static Future<void> closeCurrentSnackbar({bool withAnimations = true}) async {
-    await GetRootState.controller.config.snackBarQueue
-        .closeCurrentJob(withAnimations: withAnimations);
+    await GetRootState.controller.config.snackBarQueue.closeCurrentJob(
+      withAnimations: withAnimations,
+    );
   }
 }
 

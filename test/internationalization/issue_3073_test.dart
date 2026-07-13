@@ -9,7 +9,7 @@ void main() {
       'en_US': {
         'correct_answer_message':
             'You answered correctly on @correctAnswers of @questionsPerGame '
-                'questions!',
+            'questions!',
       },
       'he_IL': {
         'correct_answer_message':
