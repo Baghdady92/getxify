@@ -6,11 +6,6 @@ class RootController extends GetxController {
   /// Observable counter for demo purposes
   final count = 0.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
-
   /// Increment the counter
   void increment() => count.value++;
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:getxify/getxify.dart';
 
-import '../../../../services/auth_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/login_controller.dart';
 
@@ -19,7 +18,7 @@ class LoginView extends GetView<LoginController> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Obx(() {
-              final isLoggedIn = AuthService.to.isLoggedInValue;
+              final isLoggedIn = controller.authService.isLoggedInValue;
               return Text(
                 'You are currently:'
                 ' ${isLoggedIn ? "Logged In" : "Not Logged In"}'
@@ -39,7 +38,6 @@ class LoginView extends GetView<LoginController> {
                       onPressed: () async {
                         final thenTo = context.params['then'];
                         await controller.login();
-                        AuthService.to.login();
                         Get.offNamed(thenTo ?? Routes.home);
                       },
                     ),

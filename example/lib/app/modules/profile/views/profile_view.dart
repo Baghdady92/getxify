@@ -7,10 +7,12 @@ import '../controllers/profile_controller.dart';
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
 
+  static const Color _backgroundColor = Colors.amber;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.amber,
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
         title: const Text('Profile'),
         actions: [
@@ -33,17 +35,16 @@ class ProfileView extends GetView<ProfileController> {
             Obx(() => Text('Name: ${controller.userName.value}')),
             Obx(() => Text('Email: ${controller.userEmail.value}')),
             const SizedBox(height: 20),
-            MaterialButton(
-              child: const Text('Show a test dialog'),
+            ElevatedButton(
               onPressed: () {
                 Get.defaultDialog(
                   title: 'Test Dialog !!',
                   barrierDismissible: true,
                 );
               },
+              child: const Text('Show a test dialog'),
             ),
-            MaterialButton(
-              child: const Text('Show a test dialog in Home router outlet'),
+            ElevatedButton(
               onPressed: () {
                 Get.defaultDialog(
                   title: 'Test Dialog In Home Outlet !!',
@@ -51,6 +52,7 @@ class ProfileView extends GetView<ProfileController> {
                   id: Routes.home,
                 );
               },
+              child: const Text('Show a test dialog in Home router outlet'),
             ),
           ],
         ),

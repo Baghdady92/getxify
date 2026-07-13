@@ -5,7 +5,7 @@ import '../controllers/product_details_controller.dart';
 
 /// Product details screen view
 /// Demonstrates navigation with route parameters
-class ProductDetailsView extends GetWidget<ProductDetailsController> {
+class ProductDetailsView extends GetView<ProductDetailsController> {
   const ProductDetailsView({super.key});
 
   @override

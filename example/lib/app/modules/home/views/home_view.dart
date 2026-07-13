@@ -9,11 +9,13 @@ import '../controllers/home_controller.dart';
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
+  static const Color _statusBarColor = Color(0xFFFFD700);
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(color: Colors.yellow, width: double.infinity, height: 25),
+        Container(color: _statusBarColor, width: double.infinity, height: 25),
         Expanded(
           child: GetRouterOutlet.builder(
             route: Routes.home,

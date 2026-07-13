@@ -10,7 +10,7 @@ class ProductsController extends GetxController {
 
   /// Load demo products
   /// In a real app, this would fetch data from an API
-  void loadDemoProductsFromSomeWhere() {
+  void loadDemoProducts() {
     products.add(
       DemoProduct(
         name: 'Product added on: ${DateTime.now().toString()}',
@@ -22,7 +22,7 @@ class ProductsController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    loadDemoProductsFromSomeWhere();
+    loadDemoProducts();
   }
 
   @override

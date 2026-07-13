@@ -9,11 +9,6 @@ class SettingsController extends GetxController {
   /// Observable for dark mode setting
   final isDarkMode = false.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-  }
-
   /// Increment the counter
   void increment() => count.value++;
 

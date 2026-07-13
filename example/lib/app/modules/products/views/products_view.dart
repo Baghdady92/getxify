@@ -14,7 +14,7 @@ class ProductsView extends GetView<ProductsController> {
     return Scaffold(
       appBar: AppBar(title: const Text('Products')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => controller.loadDemoProductsFromSomeWhere(),
+        onPressed: () => controller.loadDemoProducts(),
         label: const Text('Add'),
       ),
       body: Column(
@@ -25,7 +25,7 @@ class ProductsView extends GetView<ProductsController> {
               () => RefreshIndicator(
                 onRefresh: () async {
                   controller.products.clear();
-                  controller.loadDemoProductsFromSomeWhere();
+                  controller.loadDemoProducts();
                 },
                 child: ListView.builder(
                   itemCount: controller.products.length,

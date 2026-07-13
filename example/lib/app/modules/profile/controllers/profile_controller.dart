@@ -9,10 +9,24 @@ class ProfileController extends GetxController {
   AuthService get authService => AuthService.to;
 
   /// Observable for user name
-  final userName = 'John Doe'.obs;
+  final userName = ''.obs;
 
   /// Observable for user email
-  final userEmail = 'john.doe@example.com'.obs;
+  final userEmail = ''.obs;
+
+  /// Load user profile data
+  /// In a real app, this would fetch from an API
+  void loadUserProfile() {
+    // Demo data - in production, fetch from API
+    userName.value = 'John Doe';
+    userEmail.value = 'john.doe@getxify.dev';
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    loadUserProfile();
+  }
 
   /// Logout the user
   void logout() {
