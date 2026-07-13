@@ -5,6 +5,17 @@ homepage: https://github.com/Aniketkhote/getxify
 repository: https://github.com/Aniketkhote/getxify
 issue_tracker: https://github.com/Aniketkhote/getxify/issues
 
+topics:
+  - state-management
+  - dependency-injection
+  - routing
+  - navigation
+  - reactive
+
+screenshots:
+  - description: GetXify – enhanced GetX for Flutter
+    path: assets/getxify.png
+
 environment:
   sdk: ^3.12.2
   flutter: ">=3.44.2"
