@@ -1,36 +1,67 @@
-#The name of your workflow.
-name: build
-# Trigger the workflow on push or pull request
+name: CI
+
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
+
 permissions:
   contents: read
-#A workflow run is made up of one or more jobs. Jobs run in parallel by default.
+
 jobs:
-  test:
-    #The type of machine to run the job on. [windows,macos, ubuntu , self-hosted]
-    defaults:
-      run:
-        working-directory: ./
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
-    #sequence of tasks called
     steps:
-      # The branch or tag ref that triggered the workflow will be checked out.
-      # https://github.com/actions/checkout
       - uses: actions/checkout@v6
-      # Setup a flutter environment.
-      # https://github.com/marketplace/actions/flutter-action
+
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.44.2"
-          channel: "stable"
-      - run: flutter pub get
-      #- run: flutter analyze
-      # run  flutter widgets tests  and unit tests
-      - run: flutter test --coverage
-      # Upload coverage reports to Codecov
-      # https://github.com/marketplace/actions/codecov
-      - uses: codecov/codecov-action@v7
+          flutter-version: "3.44.6"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+  test:
+    name: Test (Flutter ${{ matrix.flutter-version }})
+    runs-on: ubuntu-latest
+    needs: analyze
+
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version:
+          - "3.44.6"   # pinned stable
+          - "any"      # latest stable
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.flutter-version }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage to Codecov
+        # Only upload once (pinned version job)
+        if: matrix.flutter-version == '3.44.6'
+        uses: codecov/codecov-action@v7
+        with:
+          files: coverage/lcov.info
+          fail_ci_if_error: false
