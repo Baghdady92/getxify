@@ -157,63 +157,57 @@ void main() {
     },
   );
 
-  testWidgets(
-    'PopMode.page pop of the only history entry replaces it with the '
-    'parent branch and plays the pop animation',
-    (tester) async {
-      await tester.pumpWidget(buildNestedBranchApp());
-      await tester.pumpAndSettle();
-      final delegate = Get.rootController.rootDelegate;
-      expect(find.text('details-view'), findsOneWidget);
-      expect(delegate.activePages.length, 1);
+  testWidgets('PopMode.page pop of the only history entry replaces it with the '
+      'parent branch and plays the pop animation', (tester) async {
+    await tester.pumpWidget(buildNestedBranchApp());
+    await tester.pumpAndSettle();
+    final delegate = Get.rootController.rootDelegate;
+    expect(find.text('details-view'), findsOneWidget);
+    expect(delegate.activePages.length, 1);
 
-      delegate.popRoute(popMode: PopMode.page);
-      await pumpHalfwayThroughTransition(tester);
-      // Before the fix the parent was PUSHED on top of the leaf (history
-      // became [details, home]) and slid in with the forward animation.
-      expect(find.text('details-view'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('details-view')).dx,
-        greaterThan(1),
-        reason: 'the popped leaf must be mid slide-out to the right',
-      );
-      expect(find.text('home-view'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('home-view')).dx,
-        lessThan(1),
-        reason: 'the revealed parent must appear in place, not slide in',
-      );
+    delegate.popRoute(popMode: PopMode.page);
+    await pumpHalfwayThroughTransition(tester);
+    // Before the fix the parent was PUSHED on top of the leaf (history
+    // became [details, home]) and slid in with the forward animation.
+    expect(find.text('details-view'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('details-view')).dx,
+      greaterThan(1),
+      reason: 'the popped leaf must be mid slide-out to the right',
+    );
+    expect(find.text('home-view'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('home-view')).dx,
+      lessThan(1),
+      reason: 'the revealed parent must appear in place, not slide in',
+    );
 
-      await tester.pumpAndSettle();
-      expect(find.text('details-view'), findsNothing);
-      expect(find.text('home-view'), findsOneWidget);
-      expect(delegate.activePages.length, 1);
-      expect(delegate.activePages.last.route?.name, '/home');
-    },
-  );
+    await tester.pumpAndSettle();
+    expect(find.text('details-view'), findsNothing);
+    expect(find.text('home-view'), findsOneWidget);
+    expect(delegate.activePages.length, 1);
+    expect(delegate.activePages.last.route?.name, '/home');
+  });
 
-  testWidgets(
-    'offNamed (a replacement not caused by a pop) keeps the forward '
-    'push animation',
-    (tester) async {
-      await tester.pumpWidget(buildFlatApp());
-      await tester.pumpAndSettle();
-      expect(find.text('a-view'), findsOneWidget);
+  testWidgets('offNamed (a replacement not caused by a pop) keeps the forward '
+      'push animation', (tester) async {
+    await tester.pumpWidget(buildFlatApp());
+    await tester.pumpAndSettle();
+    expect(find.text('a-view'), findsOneWidget);
 
-      Get.rootController.rootDelegate.offNamed('/b');
-      await pumpHalfwayThroughTransition(tester);
-      expect(find.text('b-view'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('b-view')).dx,
-        greaterThan(1),
-        reason: 'a replace-style navigation must still slide in',
-      );
+    Get.rootController.rootDelegate.offNamed('/b');
+    await pumpHalfwayThroughTransition(tester);
+    expect(find.text('b-view'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('b-view')).dx,
+      greaterThan(1),
+      reason: 'a replace-style navigation must still slide in',
+    );
 
-      await tester.pumpAndSettle();
-      expect(find.text('a-view'), findsNothing);
-      expect(find.text('b-view'), findsOneWidget);
-    },
-  );
+    await tester.pumpAndSettle();
+    expect(find.text('a-view'), findsNothing);
+    expect(find.text('b-view'), findsOneWidget);
+  });
 
   testWidgets('a genuine removal pop at the root still animates out', (
     tester,

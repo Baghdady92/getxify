@@ -43,7 +43,9 @@ GetMaterialApp buildApp() {
 
 /// Captures the `routeInformationUpdated` messages the framework sends to
 /// the engine (the same messages that drive the browser history on web).
-List<Map<dynamic, dynamic>> captureRouteInformationUpdates(WidgetTester tester) {
+List<Map<dynamic, dynamic>> captureRouteInformationUpdates(
+  WidgetTester tester,
+) {
   final updates = <Map<dynamic, dynamic>>[];
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
     SystemChannels.navigation,

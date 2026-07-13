@@ -259,13 +259,16 @@ extension RxnIntExt on Rx<int?> {
   int? operator ~() => value != null ? ~value! : null;
 
   /// Bit-wise shift left operator.
-  int? operator <<(int shiftAmount) => value != null ? value! << shiftAmount : null;
+  int? operator <<(int shiftAmount) =>
+      value != null ? value! << shiftAmount : null;
 
   /// Bit-wise shift right operator.
-  int? operator >>(int shiftAmount) => value != null ? value! >> shiftAmount : null;
+  int? operator >>(int shiftAmount) =>
+      value != null ? value! >> shiftAmount : null;
 
   /// Bit-wise unsigned shift right operator.
-  int? operator >>>(int shiftAmount) => value != null ? value! >>> shiftAmount : null;
+  int? operator >>>(int shiftAmount) =>
+      value != null ? value! >>> shiftAmount : null;
 
   /// Division operator.
   double? operator /(num other) => value != null ? value! / other : null;

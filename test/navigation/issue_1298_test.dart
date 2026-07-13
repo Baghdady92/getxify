@@ -71,41 +71,40 @@ void main() {
   setUp(log.clear);
   tearDown(Get.reset);
 
-  testWidgets(
-    'middlewares run in priority order and the first redirect wins',
-    (tester) async {
-      await tester.pumpWidget(
-        GetMaterialApp(
-          initialRoute: '/',
-          getPages: [
-            GetPage(name: '/', page: () => const Home()),
-            GetPage(
-              name: '/multi',
-              page: () => const MultiScreen(),
-              // Declared out of priority order on purpose.
-              middlewares: [
-                RedirectPriorityMiddleware('p5', priority: 5, target: '/b'),
-                RedirectPriorityMiddleware('p1', priority: 1, target: '/a'),
-              ],
-            ),
-            GetPage(name: '/a', page: () => const AScreen()),
-            GetPage(name: '/b', page: () => const BScreen()),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('middlewares run in priority order and the first redirect wins', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      GetMaterialApp(
+        initialRoute: '/',
+        getPages: [
+          GetPage(name: '/', page: () => const Home()),
+          GetPage(
+            name: '/multi',
+            page: () => const MultiScreen(),
+            // Declared out of priority order on purpose.
+            middlewares: [
+              RedirectPriorityMiddleware('p5', priority: 5, target: '/b'),
+              RedirectPriorityMiddleware('p1', priority: 1, target: '/a'),
+            ],
+          ),
+          GetPage(name: '/a', page: () => const AScreen()),
+          GetPage(name: '/b', page: () => const BScreen()),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      Get.toNamed('/multi');
-      await tester.pumpAndSettle();
+    Get.toNamed('/multi');
+    await tester.pumpAndSettle();
 
-      // The lowest priority value runs first and its redirect stops the
-      // chain, so p5 never runs and the navigation lands on '/a'.
-      expect(log, ['p1']);
-      expect(find.byType(AScreen), findsOneWidget);
-      expect(find.byType(BScreen), findsNothing);
-      expect(Get.currentRoute, '/a');
-    },
-  );
+    // The lowest priority value runs first and its redirect stops the
+    // chain, so p5 never runs and the navigation lands on '/a'.
+    expect(log, ['p1']);
+    expect(find.byType(AScreen), findsOneWidget);
+    expect(find.byType(BScreen), findsNothing);
+    expect(Get.currentRoute, '/a');
+  });
 
   testWidgets('redirectDelegate also runs in priority order', (tester) async {
     await tester.pumpWidget(

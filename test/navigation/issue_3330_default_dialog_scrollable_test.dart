@@ -26,9 +26,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("Get.defaultDialog is not scrollable by default", (
-    tester,
-  ) async {
+  testWidgets("Get.defaultDialog is not scrollable by default", (tester) async {
     await tester.pumpWidget(Wrapper(child: Container()));
     await tester.pump();
 

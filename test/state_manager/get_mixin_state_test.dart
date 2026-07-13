@@ -60,7 +60,6 @@ void main() {
 
     expect(find.text("Count2: 1"), findsOneWidget);
   });
-
 }
 
 class Controller extends GetxController {

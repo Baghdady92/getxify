@@ -8,21 +8,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  testWidgets('closing a queued, not-yet-shown snackbar does not throw',
-      (tester) async {
+  testWidgets('closing a queued, not-yet-shown snackbar does not throw', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
     final first = Get.showSnackbar(
-      const GetSnackBar(
-        message: 'first',
-        duration: Duration(seconds: 1),
-      ),
+      const GetSnackBar(message: 'first', duration: Duration(seconds: 1)),
     );
     final second = Get.showSnackbar(
-      const GetSnackBar(
-        message: 'second',
-        duration: Duration(seconds: 1),
-      ),
+      const GetSnackBar(message: 'second', duration: Duration(seconds: 1)),
     );
 
     // 'second' is still queued behind 'first' and has no animation

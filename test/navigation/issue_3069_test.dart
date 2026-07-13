@@ -40,11 +40,21 @@ void main() {
     await tester.pumpWidget(buildApp(TextDirection.ltr));
     await tester.pump();
 
-    final title = resolvedPaddingOf(tester, find.text('ttl'), TextDirection.ltr);
-    final message =
-        resolvedPaddingOf(tester, find.text('msg'), TextDirection.ltr);
+    final title = resolvedPaddingOf(
+      tester,
+      find.text('ttl'),
+      TextDirection.ltr,
+    );
+    final message = resolvedPaddingOf(
+      tester,
+      find.text('msg'),
+      TextDirection.ltr,
+    );
     final button = resolvedPaddingOf(
-        tester, find.byType(TextButton), TextDirection.ltr);
+      tester,
+      find.byType(TextButton),
+      TextDirection.ltr,
+    );
 
     // The icon sits at the start of the row (physical left in LTR), so the
     // small 4.0 inset must be on the left and the 8.0 action-side inset on
@@ -61,11 +71,21 @@ void main() {
     await tester.pumpWidget(buildApp(TextDirection.rtl));
     await tester.pump();
 
-    final title = resolvedPaddingOf(tester, find.text('ttl'), TextDirection.rtl);
-    final message =
-        resolvedPaddingOf(tester, find.text('msg'), TextDirection.rtl);
+    final title = resolvedPaddingOf(
+      tester,
+      find.text('ttl'),
+      TextDirection.rtl,
+    );
+    final message = resolvedPaddingOf(
+      tester,
+      find.text('msg'),
+      TextDirection.rtl,
+    );
     final button = resolvedPaddingOf(
-        tester, find.byType(TextButton), TextDirection.rtl);
+      tester,
+      find.byType(TextButton),
+      TextDirection.rtl,
+    );
 
     // The icon sits at the start of the row (physical right in RTL), so the
     // small 4.0 inset must mirror to the right and the 8.0 action-side inset

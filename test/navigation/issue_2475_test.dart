@@ -93,8 +93,9 @@ void main() {
     expect(find.byKey(_marker), findsOneWidget);
   });
 
-  testWidgets('Get.to without customTransition keeps the default transition',
-      (tester) async {
+  testWidgets('Get.to without customTransition keeps the default transition', (
+    tester,
+  ) async {
     await tester.pumpWidget(const Wrapper(child: Text('home')));
     await tester.pumpAndSettle();
 

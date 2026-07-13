@@ -37,10 +37,7 @@ void main() {
     test('RxMap<K, V>() accepts entries of K/V and their subtypes', () {
       final RxMap<String, PaymentEntity> payments =
           RxMap<String, PaymentEntity>();
-      expect(
-        () => payments['a'] = const PaymentModel(1),
-        returnsNormally,
-      );
+      expect(() => payments['a'] = const PaymentModel(1), returnsNormally);
       payments['b'] = const PaymentModel(2);
       expect(payments.length, 2);
     });

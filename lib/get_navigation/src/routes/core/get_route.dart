@@ -104,17 +104,18 @@ class GetPage<T> extends Page<T> {
     super.canPop,
     super.onPopInvoked = _defaultPopInvokedHandler,
     super.restorationId,
-  })  : path = _nameToRegex(name),
-        assert(
-            name.startsWith('/'),
-            'Invalid route name: "$name". '
-            'GetPage route names must start with a slash "/". '
-            'Use "/$name" instead of "$name".'),
-        super(
-          key: key ?? ValueKey(name),
-          name: name,
-          // arguments: Get.arguments,
-        );
+  }) : path = _nameToRegex(name),
+       assert(
+         name.startsWith('/'),
+         'Invalid route name: "$name". '
+         'GetPage route names must start with a slash "/". '
+         'Use "/$name" instead of "$name".',
+       ),
+       super(
+         key: key ?? ValueKey(name),
+         name: name,
+         // arguments: Get.arguments,
+       );
   // settings = RouteSettings(name: name, arguments: Get.arguments);
 
   GetPage<T> copyWith({

@@ -92,9 +92,7 @@ void main() {
     },
   );
 
-  testWidgets('navigating back to the first inner child works', (
-    tester,
-  ) async {
+  testWidgets('navigating back to the first inner child works', (tester) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 

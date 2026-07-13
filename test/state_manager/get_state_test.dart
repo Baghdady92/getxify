@@ -69,7 +69,6 @@ void main() {
     expect(find.text("lazy 0"), findsOneWidget);
     expect(find.text("single 0"), findsOneWidget);
   });
-
 }
 
 class Controller extends GetxController {

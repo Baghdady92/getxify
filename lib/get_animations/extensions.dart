@@ -25,8 +25,10 @@ extension AnimationExtension on Widget {
     bool isSequential = false,
     bool autoPlayOnUpdate = false,
   }) {
-    assert(isSequential || this is! FadeOutAnimation,
-        'Can not use fadeOut + fadeIn when isSequential is false');
+    assert(
+      isSequential || this is! FadeOutAnimation,
+      'Can not use fadeOut + fadeIn when isSequential is false',
+    );
 
     return FadeInAnimation(
       duration: duration,
@@ -51,8 +53,10 @@ extension AnimationExtension on Widget {
     bool isSequential = false,
     bool autoPlayOnUpdate = false,
   }) {
-    assert(isSequential || this is! FadeInAnimation,
-        'Can not use fadeOut() + fadeIn when isSequential is false');
+    assert(
+      isSequential || this is! FadeInAnimation,
+      'Can not use fadeOut() + fadeIn when isSequential is false',
+    );
 
     return FadeOutAnimation(
       duration: duration,
@@ -334,8 +338,10 @@ extension AnimationExtension on Widget {
   }
 
   Duration _getDelay(bool isSequential, Duration delay) {
-    assert(!(isSequential && delay != Duration.zero),
-        "Error: When isSequential is true, delay must be zero. Context: isSequential: $isSequential delay: $delay");
+    assert(
+      !(isSequential && delay != Duration.zero),
+      "Error: When isSequential is true, delay must be zero. Context: isSequential: $isSequential delay: $delay",
+    );
 
     return isSequential
         ? (_currentAnimation?.totalDuration ?? Duration.zero)

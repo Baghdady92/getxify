@@ -56,9 +56,7 @@ void main() {
     await tester.pumpWidget(
       Wrapper(
         initialRoute: '/home',
-        namedRoutes: [
-          GetPage(name: '/home', page: () => const Text('home')),
-        ],
+        namedRoutes: [GetPage(name: '/home', page: () => const Text('home'))],
       ),
     );
     await tester.pumpAndSettle();
@@ -118,9 +116,7 @@ void main() {
     await tester.pumpWidget(
       Wrapper(
         initialRoute: '/home',
-        namedRoutes: [
-          GetPage(name: '/home', page: () => const Text('home')),
-        ],
+        namedRoutes: [GetPage(name: '/home', page: () => const Text('home'))],
       ),
     );
     await tester.pumpAndSettle();

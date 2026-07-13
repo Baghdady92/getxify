@@ -82,26 +82,24 @@ void main() {
     },
   );
 
-  testWidgets(
-    'GetMaterialApp.router forwards ShortcutActivator shortcuts',
-    (tester) async {
-      await tester.pumpWidget(
-        GetMaterialApp.router(
-          shortcuts: <ShortcutActivator, Intent>{
-            const SingleActivator(LogicalKeyboardKey.escape):
-                const _PingIntent(),
-          },
-          getPages: [
-            GetPage(
-              name: '/',
-              page: () => const Scaffold(body: Text('router home')),
-            ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('GetMaterialApp.router forwards ShortcutActivator shortcuts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      GetMaterialApp.router(
+        shortcuts: <ShortcutActivator, Intent>{
+          const SingleActivator(LogicalKeyboardKey.escape): const _PingIntent(),
+        },
+        getPages: [
+          GetPage(
+            name: '/',
+            page: () => const Scaffold(body: Text('router home')),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('router home'), findsOneWidget);
-    },
-  );
+    expect(find.text('router home'), findsOneWidget);
+  });
 }

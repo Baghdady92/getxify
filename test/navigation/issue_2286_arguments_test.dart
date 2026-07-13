@@ -35,61 +35,75 @@ class ParamsRecorder extends StatelessWidget {
 }
 
 void main() {
-  testWidgets('pages pushed in one action each build with their own arguments', (
-    tester,
-  ) async {
-    final seen = <String, Object?>{};
+  testWidgets(
+    'pages pushed in one action each build with their own arguments',
+    (tester) async {
+      final seen = <String, Object?>{};
 
-    await tester.pumpWidget(
-      Wrapper(
-        initialRoute: '/home',
-        namedRoutes: [
-          GetPage(name: '/home', page: () => const Text('home')),
-          GetPage(name: '/a', page: () => ArgsRecorder(tag: 'a', seen: seen)),
-          GetPage(name: '/b', page: () => ArgsRecorder(tag: 'b', seen: seen)),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        Wrapper(
+          initialRoute: '/home',
+          namedRoutes: [
+            GetPage(name: '/home', page: () => const Text('home')),
+            GetPage(
+              name: '/a',
+              page: () => ArgsRecorder(tag: 'a', seen: seen),
+            ),
+            GetPage(
+              name: '/b',
+              page: () => ArgsRecorder(tag: 'b', seen: seen),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // Two pushes in the same frame; '/a' builds while '/b' is already the
-    // top of the stack.
-    Get.toNamed('/a', arguments: 'a-args');
-    Get.toNamed('/b', arguments: 'b-args');
-    await tester.pumpAndSettle();
+      // Two pushes in the same frame; '/a' builds while '/b' is already the
+      // top of the stack.
+      Get.toNamed('/a', arguments: 'a-args');
+      Get.toNamed('/b', arguments: 'b-args');
+      await tester.pumpAndSettle();
 
-    expect(seen['a'], 'a-args');
-    expect(seen['b'], 'b-args');
+      expect(seen['a'], 'a-args');
+      expect(seen['b'], 'b-args');
 
-    // Outside of a page build the accessor keeps its top-of-stack behavior.
-    expect(Get.arguments, 'b-args');
-  });
+      // Outside of a page build the accessor keeps its top-of-stack behavior.
+      expect(Get.arguments, 'b-args');
+    },
+  );
 
-  testWidgets('pages pushed in one action each build with their own parameters', (
-    tester,
-  ) async {
-    final seen = <String, String?>{};
+  testWidgets(
+    'pages pushed in one action each build with their own parameters',
+    (tester) async {
+      final seen = <String, String?>{};
 
-    await tester.pumpWidget(
-      Wrapper(
-        initialRoute: '/home',
-        namedRoutes: [
-          GetPage(name: '/home', page: () => const Text('home')),
-          GetPage(name: '/a', page: () => ParamsRecorder(tag: 'a', seen: seen)),
-          GetPage(name: '/b', page: () => ParamsRecorder(tag: 'b', seen: seen)),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        Wrapper(
+          initialRoute: '/home',
+          namedRoutes: [
+            GetPage(name: '/home', page: () => const Text('home')),
+            GetPage(
+              name: '/a',
+              page: () => ParamsRecorder(tag: 'a', seen: seen),
+            ),
+            GetPage(
+              name: '/b',
+              page: () => ParamsRecorder(tag: 'b', seen: seen),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    Get.toNamed('/a', parameters: {'who': 'alice'});
-    Get.toNamed('/b', parameters: {'who': 'bob'});
-    await tester.pumpAndSettle();
+      Get.toNamed('/a', parameters: {'who': 'alice'});
+      Get.toNamed('/b', parameters: {'who': 'bob'});
+      await tester.pumpAndSettle();
 
-    expect(seen['a'], 'alice');
-    expect(seen['b'], 'bob');
-    expect(Get.parameters['who'], 'bob');
-  });
+      expect(seen['a'], 'alice');
+      expect(seen['b'], 'bob');
+      expect(Get.parameters['who'], 'bob');
+    },
+  );
 
   testWidgets('a single navigation still exposes its arguments globally', (
     tester,
@@ -101,7 +115,10 @@ void main() {
         initialRoute: '/home',
         namedRoutes: [
           GetPage(name: '/home', page: () => const Text('home')),
-          GetPage(name: '/a', page: () => ArgsRecorder(tag: 'a', seen: seen)),
+          GetPage(
+            name: '/a',
+            page: () => ArgsRecorder(tag: 'a', seen: seen),
+          ),
         ],
       ),
     );

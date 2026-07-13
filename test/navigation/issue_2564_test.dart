@@ -8,8 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  test(
-      'GetPage throws a descriptive AssertionError when the route name '
+  test('GetPage throws a descriptive AssertionError when the route name '
       'does not start with a slash', () {
     expect(
       () => GetPage(name: 'profile', page: () => const SizedBox()),

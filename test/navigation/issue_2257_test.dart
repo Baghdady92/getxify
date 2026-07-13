@@ -7,8 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  testWidgets('snackbar closed before being shown never mounts',
-      (tester) async {
+  testWidgets('snackbar closed before being shown never mounts', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
     Get.rawSnackbar(

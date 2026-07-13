@@ -227,7 +227,8 @@ extension GetInstanceExt on GetInterface {
       // resolution links the instance to the declaring page's route even
       // if it happens under another route (e.g. a deep-linked child page
       // running its ancestors' merged bindings).
-      bindingOwnerRouteName: RouterReportManager.instance.currentBindingOwnerName,
+      bindingOwnerRouteName:
+          RouterReportManager.instance.currentBindingOwnerName,
     );
   }
 
@@ -733,7 +734,8 @@ extension GetInstanceExt on GetInterface {
   /// Checks whether an instance of type [S] (and optionally with [tag]) is registered in memory.
   ///
   /// - [tag] Optional tag to identify the instance.
-  bool isRegistered<S>({String? tag}) => _singletons.containsKey(_getKey(S, tag));
+  bool isRegistered<S>({String? tag}) =>
+      _singletons.containsKey(_getKey(S, tag));
 
   /// Checks whether a lazy factory callback for type [S] (and optionally with [tag]) is registered
   /// and ready to be initialized.

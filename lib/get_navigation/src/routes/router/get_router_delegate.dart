@@ -217,8 +217,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
         'Falling back to ${notFoundRoute.name}.',
         isError: true,
       );
-      return _getRouteDecoder(_buildPageSettings(notFoundRoute.name)) ??
-          config;
+      return _getRouteDecoder(_buildPageSettings(notFoundRoute.name)) ?? config;
     }
     // Middlewares run in ascending [GetMiddleware.priority] order, and the
     // route-tree flattening lists inherited (ancestor) middlewares before
@@ -413,7 +412,9 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
       // to empty the stack): replace it with the shortened branch instead,
       // so the pop surfaces to the navigator as the removal of the leaf
       // page rather than as a push of its parent on top of it.
-      final parent = await runMiddleware(RouteDecoder(remaining.toList(), null));
+      final parent = await runMiddleware(
+        RouteDecoder(remaining.toList(), null),
+      );
       // A middleware stopped the navigation to the parent route: keep the
       // current entry rather than leaving the stack empty.
       if (parent == null) return null;
@@ -1069,8 +1070,7 @@ class GetDelegate extends RouterDelegate<RouteDecoder>
         arguments: arguments,
         parameters: parameters,
         key: ValueKey(arguments.name),
-        page: () =>
-            _PageBuildScope(settings: arguments, child: pageBuilder()),
+        page: () => _PageBuildScope(settings: arguments, child: pageBuilder()),
       );
       _sourceBuilder[configured] = pageBuilder;
       decoder.route = configured;

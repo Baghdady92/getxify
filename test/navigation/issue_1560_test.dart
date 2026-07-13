@@ -53,7 +53,8 @@ void main() {
       expect(
         tester.getTopLeft(find.text('first')),
         firstTopLeft,
-        reason: 'the previous page must not play a parallax animation '
+        reason:
+            'the previous page must not play a parallax animation '
             'under a downToUp route',
       );
 
@@ -62,26 +63,25 @@ void main() {
     },
   );
 
-  testWidgets(
-    'the previous page stays in place while a downToUp route pops',
-    (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
+  testWidgets('the previous page stays in place while a downToUp route pops', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
 
-      final firstTopLeft = tester.getTopLeft(find.text('first'));
+    final firstTopLeft = tester.getTopLeft(find.text('first'));
 
-      Get.toNamed('/second');
-      await tester.pumpAndSettle();
+    Get.toNamed('/second');
+    await tester.pumpAndSettle();
 
-      Get.back();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
+    Get.back();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
 
-      expect(tester.getTopLeft(find.text('first')), firstTopLeft);
+    expect(tester.getTopLeft(find.text('first')), firstTopLeft);
 
-      await tester.pumpAndSettle();
-      expect(find.text('first'), findsOneWidget);
-      expect(find.text('second'), findsNothing);
-    },
-  );
+    await tester.pumpAndSettle();
+    expect(find.text('first'), findsOneWidget);
+    expect(find.text('second'), findsNothing);
+  });
 }

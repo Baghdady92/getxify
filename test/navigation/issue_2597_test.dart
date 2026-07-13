@@ -5,46 +5,41 @@ import 'package:getxify/getxify.dart';
 import 'utils/wrapper.dart';
 
 void main() {
-  testWidgets(
-    "Get.currentRoute keeps the page name after dismissing a dialog "
-    "stacked over a bottomsheet (issue #2597)",
-    (tester) async {
-      await tester.pumpWidget(
-        WrapperNamed(
-          initialRoute: '/home',
-          namedRoutes: [
-            GetPage(page: () => const Text('home'), name: '/home'),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets("Get.currentRoute keeps the page name after dismissing a dialog "
+      "stacked over a bottomsheet (issue #2597)", (tester) async {
+    await tester.pumpWidget(
+      WrapperNamed(
+        initialRoute: '/home',
+        namedRoutes: [GetPage(page: () => const Text('home'), name: '/home')],
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(Get.currentRoute, '/home');
+    expect(Get.currentRoute, '/home');
 
-      Get.bottomSheet(const Text('sheet'));
-      await tester.pumpAndSettle();
+    Get.bottomSheet(const Text('sheet'));
+    await tester.pumpAndSettle();
 
-      Get.dialog(const Text('dialog'));
-      await tester.pumpAndSettle();
+    Get.dialog(const Text('dialog'));
+    await tester.pumpAndSettle();
 
-      expect(Get.isDialogOpen, true);
-      expect(Get.isBottomSheetOpen, true);
-      expect(Get.currentRoute, '/home');
+    expect(Get.isDialogOpen, true);
+    expect(Get.isBottomSheetOpen, true);
+    expect(Get.currentRoute, '/home');
 
-      Get.backLegacy();
-      await tester.pumpAndSettle();
+    Get.backLegacy();
+    await tester.pumpAndSettle();
 
-      expect(Get.isDialogOpen, false);
-      expect(Get.currentRoute, '/home');
-      expect(Get.currentRoute, isNot(startsWith('BOTTOMSHEET')));
+    expect(Get.isDialogOpen, false);
+    expect(Get.currentRoute, '/home');
+    expect(Get.currentRoute, isNot(startsWith('BOTTOMSHEET')));
 
-      Get.backLegacy();
-      await tester.pumpAndSettle();
+    Get.backLegacy();
+    await tester.pumpAndSettle();
 
-      expect(Get.isBottomSheetOpen, false);
-      expect(Get.currentRoute, '/home');
-    },
-  );
+    expect(Get.isBottomSheetOpen, false);
+    expect(Get.currentRoute, '/home');
+  });
 
   testWidgets(
     "Get.currentRoute keeps the page name after dismissing stacked dialogs "
@@ -53,9 +48,7 @@ void main() {
       await tester.pumpWidget(
         WrapperNamed(
           initialRoute: '/home',
-          namedRoutes: [
-            GetPage(page: () => const Text('home'), name: '/home'),
-          ],
+          namedRoutes: [GetPage(page: () => const Text('home'), name: '/home')],
         ),
       );
       await tester.pumpAndSettle();

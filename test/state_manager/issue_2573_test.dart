@@ -33,31 +33,30 @@ void main() {
     },
   );
 
-  testWidgets('GetBuilder with an unregistered tag names the tag in the error', (
-    tester,
-  ) async {
-    Get.put(TaggedController());
-    addTearDown(() => Get.delete<TaggedController>(force: true));
+  testWidgets(
+    'GetBuilder with an unregistered tag names the tag in the error',
+    (tester) async {
+      Get.put(TaggedController());
+      addTearDown(() => Get.delete<TaggedController>(force: true));
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: GetBuilder<TaggedController>(
-          tag: 'missing',
-          builder: (controller) => Text('${controller.counter}'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GetBuilder<TaggedController>(
+            tag: 'missing',
+            builder: (controller) => Text('${controller.counter}'),
+          ),
         ),
-      ),
-    );
+      );
 
-    final exception = tester.takeException();
-    expect(exception, isA<BindError>());
-    expect(exception.toString(), contains('with tag "missing"'));
-  });
+      final exception = tester.takeException();
+      expect(exception, isA<BindError>());
+      expect(exception.toString(), contains('with tag "missing"'));
+    },
+  );
 
   testWidgets('GetBuilder with the matching tag keeps working', (tester) async {
     Get.put(TaggedController(), tag: 'my-tag');
-    addTearDown(
-      () => Get.delete<TaggedController>(tag: 'my-tag', force: true),
-    );
+    addTearDown(() => Get.delete<TaggedController>(tag: 'my-tag', force: true));
 
     await tester.pumpWidget(
       MaterialApp(

@@ -64,7 +64,9 @@ void main() {
     final GlobalKey<NavigatorState> preMountKey = Get.key;
 
     await tester.pumpWidget(
-      GetMaterialApp(getPages: [GetPage(name: '/', page: () => const Home())]),
+      GetMaterialApp(
+        getPages: [GetPage(name: '/', page: () => const Home())],
+      ),
     );
     await tester.pumpAndSettle();
 

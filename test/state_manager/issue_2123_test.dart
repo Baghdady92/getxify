@@ -105,28 +105,23 @@ void main() {
     },
   );
 
-  testWidgets(
-    'GetBuilder(global: false, autoRemove: false) does not close the '
-    'controller on unmount',
-    (tester) async {
-      final controller = Issue2123Controller();
+  testWidgets('GetBuilder(global: false, autoRemove: false) does not close the '
+      'controller on unmount', (tester) async {
+    final controller = Issue2123Controller();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: _TogglePage(controller: controller, autoRemove: false),
-        ),
-      );
+    await tester.pumpWidget(
+      MaterialApp(home: _TogglePage(controller: controller, autoRemove: false)),
+    );
 
-      await tester.tap(find.text('toggle'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('toggle'));
+    await tester.pumpAndSettle();
 
-      expect(controller.onCloseCalls, 0);
-      expect(controller.isClosed, isFalse);
+    expect(controller.onCloseCalls, 0);
+    expect(controller.isClosed, isFalse);
 
-      controller.onDelete();
-      expect(controller.onCloseCalls, 1);
-    },
-  );
+    controller.onDelete();
+    expect(controller.onCloseCalls, 1);
+  });
 
   testWidgets(
     'GetBuilder(global: false) with the same controller instance in two '

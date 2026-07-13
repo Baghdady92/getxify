@@ -31,7 +31,10 @@ void main() {
       Wrapper(
         initialRoute: '/home',
         namedRoutes: [
-          GetPage(name: '/home', page: () => const _DrawerPage(label: 'home')),
+          GetPage(
+            name: '/home',
+            page: () => const _DrawerPage(label: 'home'),
+          ),
         ],
       ),
     );
@@ -57,7 +60,10 @@ void main() {
       Wrapper(
         initialRoute: '/home',
         namedRoutes: [
-          GetPage(name: '/home', page: () => const _DrawerPage(label: 'home')),
+          GetPage(
+            name: '/home',
+            page: () => const _DrawerPage(label: 'home'),
+          ),
           GetPage(
             name: '/second',
             page: () => const _DrawerPage(label: 'second'),
@@ -96,7 +102,10 @@ void main() {
       Wrapper(
         initialRoute: '/home',
         namedRoutes: [
-          GetPage(name: '/home', page: () => const _DrawerPage(label: 'home')),
+          GetPage(
+            name: '/home',
+            page: () => const _DrawerPage(label: 'home'),
+          ),
         ],
       ),
     );
@@ -121,7 +130,10 @@ void main() {
       Wrapper(
         initialRoute: '/home',
         namedRoutes: [
-          GetPage(name: '/home', page: () => const _DrawerPage(label: 'home')),
+          GetPage(
+            name: '/home',
+            page: () => const _DrawerPage(label: 'home'),
+          ),
         ],
       ),
     );

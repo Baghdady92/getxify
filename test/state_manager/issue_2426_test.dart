@@ -106,40 +106,37 @@ void main() {
     },
   );
 
-  testWidgets(
-    'GetTickerProviderStateMixin tickers are muted when TickerMode '
-    'disables tickers under GetBuilder',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: _TickerModeHost(
-            child: GetBuilder<MultiTickController>(
-              init: MultiTickController(),
-              builder: (controller) => const SizedBox(),
-            ),
+  testWidgets('GetTickerProviderStateMixin tickers are muted when TickerMode '
+      'disables tickers under GetBuilder', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _TickerModeHost(
+          child: GetBuilder<MultiTickController>(
+            init: MultiTickController(),
+            builder: (controller) => const SizedBox(),
           ),
         ),
-      );
+      ),
+    );
 
-      final controller = Get.find<MultiTickController>();
-      expect(controller.firstTicker.muted, isFalse);
-      expect(controller.secondTicker.muted, isFalse);
+    final controller = Get.find<MultiTickController>();
+    expect(controller.firstTicker.muted, isFalse);
+    expect(controller.secondTicker.muted, isFalse);
 
-      hostState(tester).setEnabled(false);
-      await tester.pump();
+    hostState(tester).setEnabled(false);
+    await tester.pump();
 
-      expect(controller.firstTicker.muted, isTrue);
-      expect(controller.secondTicker.muted, isTrue);
+    expect(controller.firstTicker.muted, isTrue);
+    expect(controller.secondTicker.muted, isTrue);
 
-      hostState(tester).setEnabled(true);
-      await tester.pump();
+    hostState(tester).setEnabled(true);
+    await tester.pump();
 
-      expect(controller.firstTicker.muted, isFalse);
-      expect(controller.secondTicker.muted, isFalse);
+    expect(controller.firstTicker.muted, isFalse);
+    expect(controller.secondTicker.muted, isFalse);
 
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
     'GetSingleTickerProviderStateMixin ticker is muted when TickerMode '
@@ -168,30 +165,27 @@ void main() {
     },
   );
 
-  testWidgets(
-    'ticker created after the controller is bound honors the current '
-    'TickerMode',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: _TickerModeHost(
-            child: GetBuilder<MultiTickController>(
-              init: MultiTickController(),
-              builder: (controller) => const SizedBox(),
-            ),
+  testWidgets('ticker created after the controller is bound honors the current '
+      'TickerMode', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _TickerModeHost(
+          child: GetBuilder<MultiTickController>(
+            init: MultiTickController(),
+            builder: (controller) => const SizedBox(),
           ),
         ),
-      );
+      ),
+    );
 
-      final controller = Get.find<MultiTickController>();
-      hostState(tester).setEnabled(false);
-      await tester.pump();
+    final controller = Get.find<MultiTickController>();
+    hostState(tester).setEnabled(false);
+    await tester.pump();
 
-      final lateTicker = controller.createTicker((_) {});
-      expect(lateTicker.muted, isTrue);
-      lateTicker.dispose();
+    final lateTicker = controller.createTicker((_) {});
+    expect(lateTicker.muted, isTrue);
+    lateTicker.dispose();
 
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+    await tester.pumpWidget(const SizedBox());
+  });
 }

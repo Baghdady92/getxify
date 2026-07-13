@@ -22,8 +22,7 @@ void main() {
     expect(
       page
           .copyWith(
-            preventDuplicateHandlingMode:
-                PreventDuplicateHandlingMode.recreate,
+            preventDuplicateHandlingMode: PreventDuplicateHandlingMode.recreate,
           )
           .preventDuplicateHandlingMode,
       PreventDuplicateHandlingMode.recreate,

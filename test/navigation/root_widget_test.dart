@@ -3,42 +3,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  testWidgets(
-    "GetMaterialApp builds with home successfully",
-    (tester) async {
-      await tester.pumpWidget(
-        const GetMaterialApp(
-          home: Scaffold(body: Text('Home Page')),
+  testWidgets("GetMaterialApp builds with home successfully", (tester) async {
+    await tester.pumpWidget(
+      const GetMaterialApp(home: Scaffold(body: Text('Home Page'))),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home Page'), findsOneWidget);
+  });
+
+  testWidgets("GetMaterialApp builds with routerConfig successfully", (
+    tester,
+  ) async {
+    final GoRouter router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              const Scaffold(body: Text('Router Home')),
         ),
-      );
-      await tester.pumpAndSettle();
+      ],
+    );
 
-      expect(find.text('Home Page'), findsOneWidget);
-    },
-  );
+    await tester.pumpWidget(GetMaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
 
-  testWidgets(
-    "GetMaterialApp builds with routerConfig successfully",
-    (tester) async {
-      final GoRouter router = GoRouter(
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => const Scaffold(body: Text('Router Home')),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(
-        GetMaterialApp.router(
-          routerConfig: router,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Router Home'), findsOneWidget);
-    },
-  );
+    expect(find.text('Router Home'), findsOneWidget);
+  });
 }
 
 // Simple mock for GoRouter-like structure to avoid external dependencies
@@ -67,7 +58,9 @@ class GoRoute {
 
 class _MockParser extends RouteInformationParser<Object> {
   @override
-  Future<Object> parseRouteInformation(RouteInformation routeInformation) async {
+  Future<Object> parseRouteInformation(
+    RouteInformation routeInformation,
+  ) async {
     return routeInformation.uri.path;
   }
 }
@@ -98,4 +91,3 @@ class _MockDelegate extends RouterDelegate<Object> with ChangeNotifier {
   @override
   Future<void> setNewRoutePath(Object configuration) async {}
 }
-

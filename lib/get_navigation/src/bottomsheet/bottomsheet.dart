@@ -4,8 +4,8 @@ import '../../../getxify.dart';
 import '../router_report.dart';
 
 /// A customized [PopupRoute] used to display a modal bottom sheet.
-/// 
-/// This route is responsible for rendering the [BottomSheet] widget with 
+///
+/// This route is responsible for rendering the [BottomSheet] widget with
 /// appropriate transition animations, barrier colors, and gesture handling.
 class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
   /// Constructs a [GetModalBottomSheetRoute].

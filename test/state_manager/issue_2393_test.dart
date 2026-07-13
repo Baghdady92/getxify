@@ -97,24 +97,23 @@ void main() {
     },
   );
 
-  testWidgets(
-    'single GetBuilder teardown still deletes its controller',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: GetBuilder<Issue2393Controller>(
-            init: Issue2393Controller(),
-            builder: (controller) => Text('counter: ${controller.counter}'),
-          ),
+  testWidgets('single GetBuilder teardown still deletes its controller', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GetBuilder<Issue2393Controller>(
+          init: Issue2393Controller(),
+          builder: (controller) => Text('counter: ${controller.counter}'),
         ),
-      );
+      ),
+    );
 
-      final controller = Get.find<Issue2393Controller>();
+    final controller = Get.find<Issue2393Controller>();
 
-      await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(const SizedBox());
 
-      expect(Get.isRegistered<Issue2393Controller>(), isFalse);
-      expect(controller.onCloseCalls, 1);
-    },
-  );
+    expect(Get.isRegistered<Issue2393Controller>(), isFalse);
+    expect(controller.onCloseCalls, 1);
+  });
 }

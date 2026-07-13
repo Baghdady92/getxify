@@ -15,4 +15,3 @@ abstract class BindingsInterface<T> {
 
 /// A callback used to lazily initialize or register bindings.
 typedef BindingBuilderCallback = void Function();
-

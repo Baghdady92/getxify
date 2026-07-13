@@ -30,31 +30,28 @@ class SecondScreen extends StatelessWidget {
 void main() {
   tearDown(Get.reset);
 
-  testWidgets(
-    'middleware redirect to unregistered route without unknownRoute '
-    'does not throw a null check error',
-    (tester) async {
-      await tester.pumpWidget(
-        GetMaterialApp(
-          initialRoute: '/second',
-          getPages: [
-            GetPage(
-              name: '/first',
-              page: () => const FirstScreen(),
-              middlewares: [RedirectToUnregisteredMiddleware()],
-            ),
-            GetPage(name: '/second', page: () => const SecondScreen()),
-          ],
-        ),
-      );
+  testWidgets('middleware redirect to unregistered route without unknownRoute '
+      'does not throw a null check error', (tester) async {
+    await tester.pumpWidget(
+      GetMaterialApp(
+        initialRoute: '/second',
+        getPages: [
+          GetPage(
+            name: '/first',
+            page: () => const FirstScreen(),
+            middlewares: [RedirectToUnregisteredMiddleware()],
+          ),
+          GetPage(name: '/second', page: () => const SecondScreen()),
+        ],
+      ),
+    );
 
-      Get.toNamed('/first');
-      await tester.pumpAndSettle();
+    Get.toNamed('/first');
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      // falls back to the delegate default not-found page
-      expect(find.text('Route not found'), findsOneWidget);
-      expect(find.byType(FirstScreen), findsNothing);
-    },
-  );
+    expect(tester.takeException(), isNull);
+    // falls back to the delegate default not-found page
+    expect(find.text('Route not found'), findsOneWidget);
+    expect(find.byType(FirstScreen), findsNothing);
+  });
 }

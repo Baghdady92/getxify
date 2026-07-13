@@ -8,24 +8,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:getxify/getxify.dart';
 
 void main() {
-  testWidgets('closeCurrentSnackbar(withAnimations: false) closes immediately',
-      (tester) async {
-    await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
+  testWidgets(
+    'closeCurrentSnackbar(withAnimations: false) closes immediately',
+    (tester) async {
+      await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
-    Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('hello'), findsOneWidget);
+      Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('hello'), findsOneWidget);
 
-    await SnackbarController.closeCurrentSnackbar(withAnimations: false);
-    await tester.pump();
+      await SnackbarController.closeCurrentSnackbar(withAnimations: false);
+      await tester.pump();
 
-    expect(find.text('hello'), findsNothing);
-    expect(Get.isSnackbarOpen, false);
-  });
+      expect(find.text('hello'), findsNothing);
+      expect(Get.isSnackbarOpen, false);
+    },
+  );
 
-  testWidgets('closeCurrentSnackbar() still animates by default',
-      (tester) async {
+  testWidgets('closeCurrentSnackbar() still animates by default', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
     Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));
@@ -43,8 +46,9 @@ void main() {
     expect(Get.isSnackbarOpen, false);
   });
 
-  testWidgets('cancelAllSnackbars(withAnimations: false) closes immediately',
-      (tester) async {
+  testWidgets('cancelAllSnackbars(withAnimations: false) closes immediately', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
     Get.rawSnackbar(message: 'hello', duration: const Duration(seconds: 5));

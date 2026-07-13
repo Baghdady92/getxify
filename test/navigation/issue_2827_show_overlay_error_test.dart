@@ -19,9 +19,12 @@ void main() {
     Get.showOverlay<void>(
       asyncFunction: () => Future<void>.error('boom'),
       loadingWidget: const Text('loading-marker'),
-    ).then((_) {}, onError: (Object e) {
-      error = e;
-    });
+    ).then(
+      (_) {},
+      onError: (Object e) {
+        error = e;
+      },
+    );
     await tester.pumpAndSettle();
 
     // The error still propagates to the caller...
@@ -42,9 +45,12 @@ void main() {
     Get.showOverlay<void>(
       asyncFunction: () async => throw StateError('bad state'),
       loadingWidget: const Text('loading-marker'),
-    ).then((_) {}, onError: (Object e) {
-      error = e;
-    });
+    ).then(
+      (_) {},
+      onError: (Object e) {
+        error = e;
+      },
+    );
     await tester.pumpAndSettle();
 
     expect(error, isA<StateError>());
