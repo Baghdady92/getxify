@@ -3,106 +3,146 @@
 ![GetXify](https://raw.githubusercontent.com/Aniketkhote/getxify/master/assets/getxify.png)
 
 [![pub package](https://img.shields.io/pub/v/getxify?label=getxify&color=blue)](https://pub.dev/packages/getxify)
+[![CI](https://github.com/Aniketkhote/getxify/actions/workflows/main.yml/badge.svg)](https://github.com/Aniketkhote/getxify/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/Aniketkhote/getxify/branch/master/graph/badge.svg)](https://codecov.io/gh/Aniketkhote/getxify)
 [![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
-[![style: effective dart](https://img.shields.io/badge/style-effective_dart-40c4ff.svg)](https://pub.dev/packages/effective_dart)
-<a href="https://github.com/Solido/awesome-flutter">
-<img alt="Awesome Flutter" src="https://img.shields.io/badge/Awesome-Flutter-blue.svg?longCache=true&style=flat-square" />
-</a>
+[![style: flutter_lints](https://img.shields.io/badge/style-flutter__lints-40c4ff.svg)](https://pub.dev/packages/flutter_lints)
 
-**GetXify** is an improved and enhanced version of GetX - an extra-light and powerful solution for Flutter. It combines high-performance state management, intelligent dependency injection, and route management quickly and practically.
+**GetXify** is a modernized, actively maintained fork of [GetX](https://github.com/jonataslaw/getx) — an extra-light and powerful solution for Flutter. It brings high-performance state management, intelligent dependency injection, and route management while staying fully API-compatible with GetX.
 
-## What is GetXify?
+---
 
-GetXify is a modernized fork of GetX that:
+## What's new in v4.0.0
 
-- **Supports latest Dart & Flutter** - Compatible with Dart SDK ^3.12.2 and Flutter >=3.44.2
-- **Removes deprecated code** - Cleaned up all deprecated APIs and unused modules
-- **Enhanced code quality** - Improved documentation, removed dead code, added safety checks
-- **Updated APIs** - Aligned with latest Flutter APIs for BottomSheet, Snackbar, and Dialog
-- **Better testing** - Expanded test coverage with 222+ passing tests
+v4.0.0 is a landmark release, contributed entirely by [@Baghdady92](https://github.com/Baghdady92), who resolved **111 issues** from the upstream GetX tracker and grew the test suite from 144 to **494 passing tests**. Key areas improved:
 
-### Breaking Changes from GetX
+- **Routing & navigation** — `preventDuplicates`, nested `GetRouterOutlet`, middleware pipeline, browser back, predictive back, and deep links all fixed
+- **System back & pop** — `PopScope` / `WillPopScope` / `canPop` respected on Android, Web, and iOS edge-swipe
+- **Dependency injection** — deferred disposal, fenix registrations, route-scoped controllers, and `Get.putAsync` restored
+- **State management** — `GetBuilder` tag changes, `RxList`/`RxSet`/`RxMap` default constructors, `bindStream` leak fixed
+- **Dialogs, sheets & snackbars** — `Get.close()` result forwarding, idempotent `SnackbarController`, queue robustness
+- **Reactive types** — `assign`/`assignAll` notify exactly once, unmodifiable backing collections handled
+- **Internationalization** — `scriptCode` lookup, explicit locale vs device locale, CLDR plural categories
 
-- **Removed GetConnect module** - HTTP/WebSocket communication module has been removed
-- **Removed mini stream** - Stream-related utilities have been removed
-- **Removed all deprecated methods** - Cleaned up all deprecated APIs from the original GetX
+See the full [CHANGELOG](CHANGELOG.md) for details.
+
+---
+
+## Why GetXify over GetX?
+
+| | GetX | GetXify |
+|---|---|---|
+| Dart SDK | legacy | ^3.12.2 |
+| Flutter | legacy | >=3.44.2 |
+| Deprecated APIs | present | removed |
+| Test suite | 144 tests | 494 tests |
+| Upstream bug fixes | — | 111 resolved |
+| GetConnect (HTTP) | included | removed* |
+
+\* Use `dio` or `http` instead — keeping GetXify focused on its core.
+
+---
 
 ## Installation
 
-Add GetXify to your pubspec.yaml file:
-
 ```yaml
 dependencies:
-  getxify:
+  getxify: ^4.0.0
 ```
-
-Import getxify in files that it will be used:
 
 ```dart
 import 'package:getxify/getxify.dart';
 ```
 
-## Quick Start
+### Migrating from GetX
 
-Replace `import 'package:get/get.dart';` with `import 'package:getxify/getxify.dart';`
+```dart
+// Before
+import 'package:get/get.dart';
 
-The API is fully compatible with GetX. All your existing GetX code will work with GetXify.
+// After
+import 'package:getxify/getxify.dart';
+```
 
-### Basic Example
+That's it — the API is fully compatible. Also update your `pubspec.yaml`:
+
+```yaml
+# Before
+dependencies:
+  get: ...
+
+# After
+dependencies:
+  getxify: ^4.0.0
+```
+
+---
+
+## Quick start
 
 ```dart
 void main() => runApp(GetMaterialApp(home: Home()));
 
-class Controller extends GetxController {
+class CounterController extends GetxController {
   var count = 0.obs;
-  increment() => count++;
+  void increment() => count++;
 }
 
 class Home extends StatelessWidget {
-  final Controller c = Get.put(Controller());
+  final c = Get.put(CounterController());
 
   @override
-  Widget build(context) {
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Obx(() => Text("Clicks: ${c.count}"))),
-      body: Center(child: ElevatedButton(
-        child: Text("Go to Other"),
-        onPressed: () => Get.to(Other())
-      )),
+      appBar: AppBar(title: Obx(() => Text('Clicks: ${c.count}'))),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => Get.to(OtherPage()),
+          child: const Text('Go to Other'),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: c.increment
+        onPressed: c.increment,
+        child: const Icon(Icons.add),
       ),
     );
   }
 }
 
-class Other extends StatelessWidget {
-  final Controller c = Get.find();
+class OtherPage extends StatelessWidget {
+  final c = Get.find<CounterController>();
   @override
-  Widget build(context) {
-    return Scaffold(body: Center(child: Text("${c.count}")));
+  Widget build(BuildContext context) {
+    return Scaffold(body: Center(child: Obx(() => Text('${c.count}'))));
   }
 }
 ```
 
-## Example App
+---
 
-A comprehensive example application demonstrating the key features of GetXify is available in the `example/` directory. This example showcases:
+## Key features
 
-### Features Demonstrated
+- **State management** — reactive (`.obs` + `Obx`) and simple (`GetBuilder`) state managers
+- **Route management** — named routes, nested navigation, middleware, transitions, deep links
+- **Dependency injection** — smart lifecycle-aware DI with `Get.put`, `Get.lazyPut`, `Get.find`, bindings
+- **Internationalization** — `.tr` translations with CLDR plural support
+- **Theme management** — light/dark theme switching without rebuilding the tree
+- **Platform utilities** — `GetPlatform`, responsive breakpoints, context extensions
 
-- **Nested Routing** - Complex route structure with parent-child relationships using `GetRouterOutlet`
-- **Route Guards** - Authentication middleware (`EnsureAuthMiddleware`, `EnsureNotAuthedMiddleware`)
-- **Named Routes** - Type-safe route navigation using the `Routes` class
-- **Route Parameters** - Dynamic route parameters (e.g., product details)
-- **Transitions** - Various page transitions (cupertino, size, etc.)
-- **Reactive State** - Using `.obs` for reactive variables in controllers
-- **Services** - Global state management with `GetxService`
-- **Dependency Injection** - Bindings with lazy loading using `Binding` class
-- **Clean Architecture** - Separation of concerns with organized modules
+---
 
-### Running the Example
+## Example app
+
+A full example app is in the `example/` directory, demonstrating:
+
+- Nested routing with `GetRouterOutlet`
+- Route guards (`EnsureAuthMiddleware`, `EnsureNotAuthedMiddleware`)
+- Named routes with type-safe `Routes` class
+- Dynamic route parameters
+- Page transitions
+- Reactive state with `.obs`
+- `GetxService` for global state
+- Lazy bindings
 
 ```bash
 cd example
@@ -110,47 +150,30 @@ flutter pub get
 flutter run
 ```
 
-### Project Structure
+---
 
-The example follows a clean architecture pattern with:
+## Breaking changes from GetX
 
-- `app/modules/` - Feature modules (dashboard, home, login, products, profile, etc.)
-- `app/middleware/` - Route guards and middleware
-- `app/routes/` - Route configuration
-- `services/` - Global services (authentication)
-- `models/` - Data models
+**v4.0.0**
+- `Get.back()` now returns `bool` — callers ignoring the result are unaffected
+- iOS back-swipe starts only near the leading edge by default — use `popGesture: true` to restore full-screen
 
-Each module contains its own bindings, controllers, and views following the MVVM pattern.
+**v2.0.0**
+- Removed `GetUtils` validation/string helpers — use [`validators`](https://pub.dev/packages/validators) or [`recase`](https://pub.dev/packages/recase)
+- Removed several extensions (`double_extensions`, `duration_extensions`, `widget_extensions`, etc.)
 
-## Documentation
+**v1.0.0**
+- Removed `GetConnect` HTTP/WebSocket module — use [`dio`](https://pub.dev/packages/dio) or [`http`](https://pub.dev/packages/http)
+- Removed mini stream utilities — use standard Dart streams or [`rxdart`](https://pub.dev/packages/rxdart)
+- All deprecated GetX APIs removed
 
-For detailed documentation on all features, please refer to the official [GetX documentation](https://github.com/jonataslaw/getx).
-
-GetXify maintains the same API and features as GetX, so all GetX documentation applies directly to GetXify.
-
-### Key Features
-
-- **State Management** - Reactive and simple state managers
-- **Route Management** - Navigation without context
-- **Dependency Management** - Smart dependency injection
-- **Internationalization** - Easy translations and locales
-- **Theme Management** - Simple theme switching
-- **Utils & Helpers** - Platform detection, responsive design, and more
-
-## Migration from GetX
-
-If you were using GetX and want to migrate to GetXify:
-
-- Replace `import 'package:get/get.dart';` with `import 'package:getxify/getxify.dart';`
-- Replace `get` dependency with `getxify` in pubspec.yaml
-- If you were using GetConnect, you'll need to implement your own HTTP client using dio or http package
-- If you were using mini stream utilities, migrate to standard Dart streams or RxDart
-- All deprecated methods have been removed, so update your code to use the current APIs
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding standards, and the PR workflow.
 
 ## License
 
-GetXify is released under the MIT License. See the [LICENSE](LICENSE) file for details.
+GetXify is released under the MIT License. See [LICENSE](LICENSE) for details.  
+Includes work by [@Baghdady92](https://github.com/Baghdady92) and originally forked from [GetX](https://github.com/jonataslaw/getx) by Jonatas Borges.
