@@ -1,1 +1,15 @@
 blank_issues_enabled: false
+
+contact_links:
+  - name: GetXify Discussions (Q&A, ideas, show & tell)
+    url: https://github.com/Aniketkhote/getxify/discussions
+    about: Ask questions and share what you're building with GetXify.
+  - name: GetX documentation
+    url: https://github.com/jonataslaw/getx
+    about: GetXify is API-compatible with GetX — the full docs apply here too.
+  - name: pub.dev package page
+    url: https://pub.dev/packages/getxify
+    about: Changelogs, install instructions, and API reference.
+  - name: Stack Overflow
+    url: https://stackoverflow.com/questions/tagged/getxify
+    about: Search or ask tagged questions on Stack Overflow.

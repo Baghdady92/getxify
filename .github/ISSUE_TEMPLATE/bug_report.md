@@ -1,61 +1,79 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+about: Report a reproducible bug to help us improve GetXify
+title: '[Bug] '
+labels: 'bug, needs triage'
 assignees: aniketkhote
-
 ---
-**ATTENTION: DO NOT USE THIS FIELD TO ASK SUPPORT QUESTIONS. USE THE PLATFORM CHANNELS FOR THIS. THIS SPACE IS DEDICATED ONLY FOR BUGS DESCRIPTION.**
-**Fill in the template. Issues that do not respect the model will be closed.**
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+<!--
+STOP — please read before filing.
 
-**Reproduction code
-NOTE: THIS IS MANDATORY, IF YOUR ISSUE DOES NOT CONTAIN IT, IT WILL BE CLOSED PRELIMINARY)**
+• This tracker is for confirmed bugs in GetXify only.
+• For usage questions, use GitHub Discussions or Stack Overflow (tag: getxify).
+• Issues that skip the template or lack a reproduction will be closed without comment.
+-->
 
-example:
+## Description
+
+<!-- A clear and concise description of what the bug is. -->
+
+## Reproduction
+
+<!--
+Provide the *minimal* code that reproduces the problem.
+Remove everything that is not necessary to trigger the bug.
+Issues without a minimal reproduction will be closed.
+-->
 
 ```dart
-void main() => runApp(MaterialApp(home: Home()));
+import 'package:flutter/material.dart';
+import 'package:getxify/getxify.dart';
 
-class Home extends StatelessWidget {
-  final count = 0.obs;
+void main() => runApp(GetMaterialApp(home: BugPage()));
+
+class BugPage extends StatelessWidget {
   @override
-  Widget build(context) => Scaffold(
-      appBar: AppBar(title: Text("counter")),
-      body: Center(
-        child: Obx(() => Text("$count")),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => count.value++,
-      ));
+  Widget build(BuildContext context) {
+    // minimal reproduction here
+    return Scaffold();
+  }
 }
 ```
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## Steps to reproduce
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+1. 
+2. 
+3. 
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Expected behavior
 
-**Flutter Version:**
-Enter the version of the Flutter you are using
+<!-- What did you expect to happen? -->
 
-**Getxify Version:**
-Enter the version of the Getxify you are using
+## Actual behavior
 
-**Describe on which device you found the bug:**
-ex: Moto z2 - Android.
+<!-- What actually happened? Include stack traces or error messages if applicable. -->
 
-**Minimal reproduce code**
-Provide a minimum reproduction code for the problem
+<details>
+<summary>Stack trace / error output (if any)</summary>
+
+```
+paste here
+```
+
+</details>
+
+## Environment
+
+| Field              | Value |
+|--------------------|-------|
+| GetXify version    | <!-- e.g. 4.0.0 --> |
+| Flutter version    | <!-- e.g. 3.44.6 — run `flutter --version` --> |
+| Dart version       | <!-- e.g. 3.12.2 --> |
+| Platform/device    | <!-- e.g. Android 14, iOS 17, Chrome 125, macOS 14 --> |
+| IDE                | <!-- e.g. VS Code 1.90, Android Studio Hedgehog --> |
+
+## Additional context
+
+<!-- Screenshots, related issues, or anything else that might help. -->
