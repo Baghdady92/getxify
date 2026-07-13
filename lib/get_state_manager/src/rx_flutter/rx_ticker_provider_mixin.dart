@@ -6,6 +6,20 @@ import 'package:flutter/scheduler.dart';
 
 import '../../get_state_manager.dart';
 
+/// Common interface of [GetSingleTickerProviderStateMixin] and
+/// [GetTickerProviderStateMixin]: a [TickerProvider] whose tickers follow
+/// the [TickerMode] of the widget subtree that forwards its dependency
+/// changes to [didChangeDependencies].
+///
+/// [GetX], [GetBuilder] and [Bind] check for this interface once instead of
+/// dispatching on each concrete mixin.
+abstract interface class GetTickerProvider implements TickerProvider {
+  /// Binds the tickers created by this provider to the [TickerMode] that
+  /// surrounds [context], so they are muted whenever tickers are disabled
+  /// in that subtree.
+  void didChangeDependencies(BuildContext context);
+}
+
 /// Used like `SingleTickerProviderMixin` but only with Get Controllers.
 /// Simplifies AnimationController creation inside GetxController.
 ///
@@ -27,8 +41,9 @@ import '../../get_state_manager.dart';
 ///  ...
 /// ```
 mixin GetSingleTickerProviderStateMixin on GetxController
-    implements TickerProvider {
+    implements GetTickerProvider {
   Ticker? _ticker;
+  ValueListenable<TickerModeData>? _tickerModeNotifier;
 
   @override
   Ticker createTicker(TickerCallback onTick) {
@@ -56,11 +71,39 @@ mixin GetSingleTickerProviderStateMixin on GetxController
     // event handler, and that thus TickerMode.valuesOf(context).enabled would return true. We
     // can't actually check that here because if we're in initState then we're
     // not allowed to do inheritance checks yet.
+    _updateTicker();
     return _ticker!;
   }
 
+  /// Binds the ticker created by this controller to the [TickerMode] that
+  /// surrounds [context], so the ticker is muted whenever tickers are
+  /// disabled in that subtree (for example while the route that shows the
+  /// widget is covered by another route).
+  ///
+  /// [GetX], [GetBuilder] and [Bind] call this automatically for the
+  /// controllers they manage; it only needs to be called manually when the
+  /// controller is used with a custom widget that provides its own
+  /// [BuildContext].
+  @override
   void didChangeDependencies(BuildContext context) {
-    if (_ticker != null) _ticker!.muted = !TickerMode.valuesOf(context).enabled;
+    _updateTickerModeNotifier(context);
+    _updateTicker();
+  }
+
+  void _updateTicker() {
+    final values = _tickerModeNotifier?.value;
+    if (values == null || _ticker == null) return;
+    _ticker!
+      ..muted = !values.enabled
+      ..forceFrames = values.forceFrames;
+  }
+
+  void _updateTickerModeNotifier(BuildContext context) {
+    final newNotifier = TickerMode.getValuesNotifier(context);
+    if (newNotifier == _tickerModeNotifier) return;
+    _tickerModeNotifier?.removeListener(_updateTicker);
+    newNotifier.addListener(_updateTicker);
+    _tickerModeNotifier = newNotifier;
   }
 
   @override
@@ -82,6 +125,8 @@ mixin GetSingleTickerProviderStateMixin on GetxController
         _ticker!.describeForError('The offending ticker was'),
       ]);
     }());
+    _tickerModeNotifier?.removeListener(_updateTicker);
+    _tickerModeNotifier = null;
     super.onClose();
   }
 }
@@ -111,8 +156,10 @@ mixin GetSingleTickerProviderStateMixin on GetxController
 ///  }
 ///  ...
 /// ```
-mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
+mixin GetTickerProviderStateMixin on GetxController
+    implements GetTickerProvider {
   Set<Ticker>? _tickers;
+  ValueListenable<TickerModeData>? _tickerModeNotifier;
 
   @override
   Ticker createTicker(TickerCallback onTick) {
@@ -122,6 +169,12 @@ mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
       this,
       debugLabel: kDebugMode ? 'created by ${describeIdentity(this)}' : null,
     );
+    final values = _tickerModeNotifier?.value;
+    if (values != null) {
+      result
+        ..muted = !values.enabled
+        ..forceFrames = values.forceFrames;
+    }
     _tickers!.add(result);
     return result;
   }
@@ -132,13 +185,37 @@ mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
     _tickers!.remove(ticker);
   }
 
+  /// Binds the tickers created by this controller to the [TickerMode] that
+  /// surrounds [context], so they are muted whenever tickers are disabled in
+  /// that subtree (for example while the route that shows the widget is
+  /// covered by another route).
+  ///
+  /// [GetX], [GetBuilder] and [Bind] call this automatically for the
+  /// controllers they manage; it only needs to be called manually when the
+  /// controller is used with a custom widget that provides its own
+  /// [BuildContext].
+  @override
   void didChangeDependencies(BuildContext context) {
-    final muted = !TickerMode.valuesOf(context).enabled;
-    if (_tickers != null) {
-      for (final ticker in _tickers!) {
-        ticker.muted = muted;
-      }
+    _updateTickerModeNotifier(context);
+    _updateTickers();
+  }
+
+  void _updateTickers() {
+    final values = _tickerModeNotifier?.value;
+    if (values == null || _tickers == null) return;
+    for (final ticker in _tickers!) {
+      ticker
+        ..muted = !values.enabled
+        ..forceFrames = values.forceFrames;
     }
+  }
+
+  void _updateTickerModeNotifier(BuildContext context) {
+    final newNotifier = TickerMode.getValuesNotifier(context);
+    if (newNotifier == _tickerModeNotifier) return;
+    _tickerModeNotifier?.removeListener(_updateTickers);
+    newNotifier.addListener(_updateTickers);
+    _tickerModeNotifier = newNotifier;
   }
 
   @override
@@ -166,6 +243,8 @@ mixin GetTickerProviderStateMixin on GetxController implements TickerProvider {
       }
       return true;
     }());
+    _tickerModeNotifier?.removeListener(_updateTickers);
+    _tickerModeNotifier = null;
     super.onClose();
   }
 }

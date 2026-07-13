@@ -201,7 +201,6 @@ class CircularRevealTransition {
         centerAlignment: Alignment.center,
         centerOffset: Offset.zero,
         minRadius: 0,
-        maxRadius: 800,
       ),
       child: child,
     );

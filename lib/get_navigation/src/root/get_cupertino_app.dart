@@ -46,7 +46,7 @@ class GetCupertinoApp extends StatelessWidget {
   final bool checkerboardOffscreenLayers;
   final bool showSemanticsDebugger;
   final bool debugShowCheckedModeBanner;
-  final Map<LogicalKeySet, Intent>? shortcuts;
+  final Map<ShortcutActivator, Intent>? shortcuts;
   final ThemeData? highContrastTheme;
   final ThemeData? highContrastDarkTheme;
   final Map<Type, Action<Intent>>? actions;
@@ -74,6 +74,12 @@ class GetCupertinoApp extends StatelessWidget {
   final bool useInheritedMediaQuery;
   final List<Bind> binds;
   final ScrollBehavior? scrollBehavior;
+
+  /// The identifier to use for state restoration of this app.
+  ///
+  /// Forwarded to [CupertinoApp.restorationScopeId]. Providing a non-null
+  /// value enables state restoration for the application.
+  final String? restorationScopeId;
 
   /// Creates a [GetCupertinoApp] instance for a standard GetX application.
   ///
@@ -133,6 +139,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
+    this.restorationScopeId,
   }) : routeInformationProvider = null,
        backButtonDispatcher = null,
        routeInformationParser = null,
@@ -194,6 +201,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.getPages,
     this.navigatorObservers,
     this.unknownRoute,
+    this.restorationScopeId,
   }) : navigatorKey = null,
        onGenerateRoute = null,
        home = null,
@@ -280,6 +288,7 @@ class GetCupertinoApp extends StatelessWidget {
               debugShowCheckedModeBanner: debugShowCheckedModeBanner,
               shortcuts: shortcuts,
               scrollBehavior: scrollBehavior,
+              restorationScopeId: restorationScopeId,
             );
           }
 
@@ -313,13 +322,15 @@ class GetCupertinoApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 )
               : CupertinoApp.router(
                   routerDelegate: controller.config.routerDelegate,
                   routeInformationParser:
                       controller.config.routeInformationParser,
                   backButtonDispatcher: backButtonDispatcher,
-                  routeInformationProvider: routeInformationProvider,
+                  routeInformationProvider:
+                      controller.config.routeInformationProvider,
                   key: controller.config.unikey,
                   builder: (context, child) => Directionality(
                     textDirection:
@@ -347,6 +358,7 @@ class GetCupertinoApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 );
         },
       ),

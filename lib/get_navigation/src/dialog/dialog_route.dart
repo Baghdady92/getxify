@@ -22,9 +22,7 @@ class GetDialogRoute<T> extends PopupRoute<T> {
     super.settings,
     this.anchorPoint,
     this._traversalEdgeBehavior,
-  }) {
-    RouterReportManager.instance.reportCurrentRoute(this);
-  }
+  });
 
   final RoutePageBuilder pageBuilder;
 

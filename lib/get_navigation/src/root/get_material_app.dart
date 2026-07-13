@@ -49,7 +49,7 @@ class GetMaterialApp extends StatelessWidget {
   final bool checkerboardOffscreenLayers;
   final bool showSemanticsDebugger;
   final bool debugShowCheckedModeBanner;
-  final Map<LogicalKeySet, Intent>? shortcuts;
+  final Map<ShortcutActivator, Intent>? shortcuts;
   final ScrollBehavior? scrollBehavior;
   final ThemeData? highContrastTheme;
   final ThemeData? highContrastDarkTheme;
@@ -76,6 +76,12 @@ class GetMaterialApp extends StatelessWidget {
   final RouterConfig<Object>? routerConfig;
   final BackButtonDispatcher? backButtonDispatcher;
   final bool useInheritedMediaQuery;
+
+  /// The identifier to use for state restoration of this app.
+  ///
+  /// Forwarded to [MaterialApp.restorationScopeId]. Providing a non-null
+  /// value enables state restoration for the application.
+  final String? restorationScopeId;
 
   /// Creates a [GetMaterialApp] instance for a standard GetX application.
   ///
@@ -138,6 +144,7 @@ class GetMaterialApp extends StatelessWidget {
     this.highContrastTheme,
     this.highContrastDarkTheme,
     this.actions,
+    this.restorationScopeId,
   }) : routeInformationProvider = null,
        backButtonDispatcher = null,
        routeInformationParser = null,
@@ -202,6 +209,7 @@ class GetMaterialApp extends StatelessWidget {
     this.getPages,
     this.navigatorObservers,
     this.unknownRoute,
+    this.restorationScopeId,
   }) : navigatorKey = null,
        onGenerateRoute = null,
        home = null,
@@ -298,6 +306,7 @@ class GetMaterialApp extends StatelessWidget {
               debugShowCheckedModeBanner: debugShowCheckedModeBanner,
               shortcuts: shortcuts,
               scrollBehavior: scrollBehavior,
+              restorationScopeId: restorationScopeId,
             );
           }
 
@@ -338,13 +347,15 @@ class GetMaterialApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 )
               : MaterialApp.router(
                   routerDelegate: controller.config.routerDelegate,
                   routeInformationParser:
                       controller.config.routeInformationParser,
                   backButtonDispatcher: backButtonDispatcher,
-                  routeInformationProvider: routeInformationProvider,
+                  routeInformationProvider:
+                      controller.config.routeInformationProvider,
                   key: controller.config.unikey,
                   builder: (context, child) => Directionality(
                     textDirection:
@@ -379,6 +390,7 @@ class GetMaterialApp extends StatelessWidget {
                   debugShowCheckedModeBanner: debugShowCheckedModeBanner,
                   shortcuts: shortcuts,
                   scrollBehavior: scrollBehavior,
+                  restorationScopeId: restorationScopeId,
                 );
         },
       ),

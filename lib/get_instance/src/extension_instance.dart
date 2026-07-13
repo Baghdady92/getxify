@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../get_core/get_core.dart';
 import '../../get_navigation/src/router_report.dart';
+import '../../get_state_manager/src/simple/list_notifier.dart';
 import 'lifecycle.dart';
 
 /// Exception thrown when a requested dependency has not been registered
@@ -99,6 +100,33 @@ extension GetInstanceExt on GetInterface {
     return find<S>(tag: tag);
   }
 
+  /// Injects an instance of [S] built asynchronously by [builder] into the
+  /// dependency manager.
+  ///
+  /// Awaits [builder] and then registers the resulting instance exactly like
+  /// [put], so the regular lifecycle (`onInit`/`onReady`) runs on the ready
+  /// instance. Perform any asynchronous setup inside [builder] **before**
+  /// returning the instance; lifecycle callbacks such as `onInit` are
+  /// synchronous and are not awaited.
+  ///
+  /// ```dart
+  /// await Get.putAsync<StorageService>(() async {
+  ///   final service = StorageService();
+  ///   await service.init();
+  ///   return service;
+  /// });
+  /// ```
+  ///
+  /// - [tag] Optional tag to identify this specific instance.
+  /// - [permanent] If true, prevents the instance from being deleted by SmartManagement.
+  Future<S> putAsync<S>(
+    AsyncInstanceBuilderCallback<S> builder, {
+    String? tag,
+    bool permanent = false,
+  }) async {
+    return put<S>(await builder(), tag: tag, permanent: permanent);
+  }
+
   /// Creates a new Instance<S> lazily from the `<S>builder()` callback.
   ///
   /// The first time you call `Get.find()`, the `builder()` callback will create
@@ -194,6 +222,12 @@ extension GetInstanceExt on GetInterface {
       fenix: fenix,
       tag: name,
       lateRemove: dep,
+      // When this registration is created by a page binding's
+      // `dependencies()`, remember which route declared it so the first
+      // resolution links the instance to the declaring page's route even
+      // if it happens under another route (e.g. a deep-linked child page
+      // running its ancestors' merged bindings).
+      bindingOwnerRouteName: RouterReportManager.instance.currentBindingOwnerName,
     );
   }
 
@@ -223,6 +257,7 @@ extension GetInstanceExt on GetInterface {
         if (Get.smartManagement != SmartManagement.onlyBuilder) {
           RouterReportManager.instance.reportDependencyLinkedToRoute(
             _getKey(S, name),
+            ownerRouteName: dep.bindingOwnerRouteName,
           );
         }
       }
@@ -355,17 +390,28 @@ extension GetInstanceExt on GetInterface {
   /// If the existing instance is permanent, it will be forcefully deleted first before
   /// the new child is registered.
   ///
+  /// Registrations that [delete] intentionally keeps alive (a `fenix`
+  /// factory kept for resurrection, a [GetxService], or an entry whose
+  /// `lateRemove` disposal is still pending) are evicted outright, so the
+  /// new [child] always takes their place.
+  ///
   /// - [tag] Optional tag to identify the instance.
   void replace<P>(P child, {String? tag}) {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
     delete<P>(tag: tag, force: permanent);
+    _evictSurvivingRegistration(_getKey(P, tag));
     put(child, tag: tag, permanent: permanent);
   }
 
   /// Replaces an existing registered dependency of type [P] with a new lazy factory [builder].
   ///
   /// If the existing instance is permanent, it will be forcefully deleted first.
+  ///
+  /// Registrations that [delete] intentionally keeps alive (a `fenix`
+  /// factory kept for resurrection, a [GetxService], or an entry whose
+  /// `lateRemove` disposal is still pending) are evicted outright, so the
+  /// new [builder] always takes their place.
   ///
   /// - [tag] Optional tag to identify the instance.
   /// - [fenix] If true, the builder callback will persist in memory to recreate the instance if deleted.
@@ -378,13 +424,57 @@ extension GetInstanceExt on GetInterface {
     final info = getInstanceInfo<P>(tag: tag);
     final permanent = (info.isPermanent ?? false);
     delete<P>(tag: tag, force: permanent);
+    _evictSurvivingRegistration(_getKey(P, tag));
     lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+  }
+
+  /// Removes a registration that survived [delete] so that a follow-up
+  /// [put]/[lazyPut] issued by [replace]/[lazyReplace] registers the new
+  /// builder instead of being ignored by `_insert`.
+  ///
+  /// [delete] keeps an entry registered when it is a `fenix` factory
+  /// (retained for resurrection), a live [GetxService], or when a
+  /// `lateRemove` chain is pending (in which case only the oldest
+  /// superseded factory was peeled off). Any instance in the surviving
+  /// entry that has not yet received `onDelete` gets it here; `onDelete`
+  /// is idempotent, so instances already disposed by [delete] are safe.
+  void _evictSurvivingRegistration(String key) {
+    final dep = _singletons[key];
+    if (dep == null) return;
+
+    var stale = dep.lateRemove;
+    while (stale != null) {
+      final i = stale.dependency;
+      if (i is GetLifeCycleMixin) {
+        i.onDelete();
+        Get.log('"$key" onDelete() called');
+      }
+      stale = stale.lateRemove;
+    }
+
+    final i = dep.dependency;
+    if (i is GetLifeCycleMixin) {
+      i.onDelete();
+      Get.log('"$key" onDelete() called');
+    }
+
+    _singletons.remove(key);
+    Get.log('"$key" deleted from memory');
   }
 
   /// Generates the key based on [type] (and optionally a [name])
   /// to register an Instance Builder in the hashmap.
+  ///
+  /// A nullable [type] is normalized to its non-nullable form, so a
+  /// registration whose generic argument was inferred as nullable (e.g.
+  /// `MyController? c = Get.put(MyController());`) shares the same key
+  /// as `Get.put<MyController>(...)` and `Get.find<MyController>()`.
   String _getKey(Type type, String? name) {
-    return name == null ? type.toString() : type.toString() + name;
+    var typeName = type.toString();
+    if (typeName.endsWith('?')) {
+      typeName = typeName.substring(0, typeName.length - 1);
+    }
+    return name == null ? typeName : typeName + name;
   }
 
   /// Delete registered Class Instance [S] (or [tag]) and, closes any open
@@ -392,6 +482,11 @@ extension GetInstanceExt on GetInterface {
   ///
   /// Deletes the Instance<[S]>, cleaning the memory and closes any open
   /// controllers (`DisposableInterface`).
+  ///
+  /// If the registration was replaced while the previous route was still
+  /// disposing (the superseded factory is kept in `lateRemove`), only the
+  /// superseded instance is disposed and the fresh registration stays
+  /// alive, in which case this returns `false`.
   ///
   /// - [tag] Optional "tag" used to register the Instance
   /// - [key] For internal usage, is the processed key used to register
@@ -409,15 +504,30 @@ extension GetInstanceExt on GetInterface {
 
     if (dep == null) return false;
 
-    void cleanFactory(_InstanceBuilderFactory<Object?> factory) {
-      if (factory.lateRemove != null) {
-        cleanFactory(factory.lateRemove!);
+    if (dep.lateRemove != null) {
+      // The registration was replaced while a previous route was still
+      // disposing. Each pending disposal peels off the oldest superseded
+      // factory; the live registration is only removed once no superseded
+      // factory remains.
+      var parent = dep;
+      while (parent.lateRemove!.lateRemove != null) {
+        parent = parent.lateRemove!;
       }
-      final i = factory.dependency;
+      final stale = parent.lateRemove!;
+      final i = stale.dependency;
+      // Note: the `GetxServiceMixin` guard is intentionally NOT applied
+      // here. It exists to keep LIVE services alive across casual deletes;
+      // a superseded factory in `lateRemove` has already been replaced by
+      // a newer registration, so keeping it would only leak the stale
+      // instance and make the live one undeletable (the guard would fire
+      // on every subsequent delete before the chain is cleared).
       if (i is GetLifeCycleMixin) {
         i.onDelete();
         Get.log('"$newKey" onDelete() called');
       }
+      parent.lateRemove = null;
+      Get.log('"$newKey" deleted from memory');
+      return false;
     }
 
     if (dep.permanent && !force) {
@@ -428,18 +538,21 @@ extension GetInstanceExt on GetInterface {
       );
       return false;
     }
-    final primaryDependency = dep.dependency;
+    final i = dep.dependency;
 
-    if (primaryDependency is GetxServiceMixin && !force) {
+    if (i is GetxServiceMixin && !force) {
       return false;
     }
 
-    cleanFactory(dep);
+    if (i is GetLifeCycleMixin) {
+      i.onDelete();
+      Get.log('"$newKey" onDelete() called');
+    }
 
     if (dep.fenix) {
       dep.dependency = null;
       dep.isInit = false;
-      dep.lateRemove = null;
+      dep.isDirty = false;
       return true;
     } else {
       _singletons.remove(newKey);
@@ -450,6 +563,77 @@ extension GetInstanceExt on GetInterface {
       }
       return true;
     }
+  }
+
+  /// Deletes the dependency registered under [key] on behalf of a disposed
+  /// route, keeping it alive when still-mounted widgets depend on it.
+  ///
+  /// Meant for internal usage of the `RouterReportManager`: when a route is
+  /// disposed, the instances linked to it are deleted. An instance that
+  /// still has widget subscribers (`GetBuilder`/`GetX` listeners) at that
+  /// moment may be shared with widgets of another, still-visible route —
+  /// e.g. a controller created during a rebuild of a lower route's subtree
+  /// while the disposed route was topmost — so its deletion is deferred to
+  /// the end of the frame, after the disposed route's own subtree has
+  /// unmounted and released its subscriptions:
+  ///
+  ///  * if no subscriber remains, the instance is deleted normally;
+  ///  * if subscribers remain, they belong to still-mounted widgets of
+  ///    other routes and the instance is kept alive (it is disposed later
+  ///    by its creator widget's unmount or an explicit delete).
+  ///
+  /// A registration superseded while the route was disposing (pending
+  /// `lateRemove` chain) is peeled synchronously, exactly like [delete].
+  void deleteRouteDependency(String key) {
+    final dep = _singletons[key];
+    if (dep == null) {
+      Get.log('Instance "$key" already removed.', isError: true);
+      return;
+    }
+
+    final live = dep.dependency;
+    final hasSubscribers =
+        live is ListNotifierSingleMixin &&
+        !live.isDisposed &&
+        live.listenersLength > 0;
+    if (dep.lateRemove != null || !hasSubscribers) {
+      delete(key: key);
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final current = _singletons[key];
+      if (current == null) return;
+      if (!identical(current, dep)) {
+        // The registration was superseded meanwhile (e.g. the same key was
+        // re-registered for a fresh route while this route was disposing).
+        // If the stale factory is pending in the lateRemove chain, peel it
+        // like the synchronous path would have; a fresh unrelated
+        // registration must not be touched.
+        var chain = current.lateRemove;
+        while (chain != null) {
+          if (identical(chain, dep)) {
+            delete(key: key);
+            return;
+          }
+          chain = chain.lateRemove;
+        }
+        return;
+      }
+      if (!live.isDisposed && live.listenersLength > 0) {
+        // The disposed route marked the key dirty on its way out; the
+        // instance is consciously kept alive for its remaining
+        // subscribers, so it must not be treated as stale by future
+        // registrations.
+        dep.isDirty = false;
+        Get.log(
+          'Instance "$key" was kept alive on route disposal: '
+          'widgets are still subscribed to it.',
+        );
+        return;
+      }
+      delete(key: key);
+    });
   }
 
   /// Deletes all registered instances from memory, invokes their onDelete/close lifecycles,
@@ -466,17 +650,46 @@ extension GetInstanceExt on GetInterface {
   /// Reloads all registered instances by clearing their active dependency objects
   /// and resetting their initialization states.
   ///
-  /// - [force] If true, reloads even the instances marked as `permanent`.
+  /// Each initialized instance receives its `onDelete` lifecycle (which
+  /// triggers `onClose`) before being cleared, mirroring [reload].
+  /// Instances marked as `permanent` and [GetxService]s are skipped
+  /// unless [force] is true.
+  ///
+  /// - [force] If true, reloads even the instances marked as `permanent`
+  ///   and `GetxService`s.
   void reloadAll({bool force = false}) {
-    _singletons.forEach((key, value) {
+    // Iterate over a snapshot of the keys (like [deleteAll]): the `onDelete`
+    // lifecycle below runs user `onClose` callbacks, which may mutate the
+    // registry (e.g. `Get.delete<Other>()`, `Get.put`) and would otherwise
+    // throw a ConcurrentModificationError mid-iteration.
+    final keys = _singletons.keys.toList();
+    for (final key in keys) {
+      final value = _singletons[key];
+      if (value == null) {
+        // Removed by a lifecycle callback of a previously reloaded instance.
+        continue;
+      }
       if (value.permanent && !force) {
         Get.log('Instance "$key" is permanent. Skipping reload');
-      } else {
-        value.dependency = null;
-        value.isInit = false;
-        Get.log('Instance "$key" was reloaded.');
+        continue;
       }
-    });
+
+      final i = value.dependency;
+
+      if (i is GetxServiceMixin && !force) {
+        Get.log('Instance "$key" is a GetxService. Skipping reload');
+        continue;
+      }
+
+      if (i is GetLifeCycleMixin) {
+        i.onDelete();
+        Get.log('"$key" onDelete() called');
+      }
+
+      value.dependency = null;
+      value.isInit = false;
+      Get.log('Instance "$key" was reloaded.');
+    }
   }
 
   /// Reloads/restarts a specific registered dependency of type [S].
@@ -579,6 +792,11 @@ class _InstanceBuilderFactory<S> {
 
   String? tag;
 
+  /// The name of the route whose page binding created this registration,
+  /// or `null` when it was not created by a page binding. Used to link the
+  /// instance to the declaring page's route on its first resolution.
+  final String? bindingOwnerRouteName;
+
   _InstanceBuilderFactory({
     required this.isSingleton,
     required this.builderFunc,
@@ -587,6 +805,7 @@ class _InstanceBuilderFactory<S> {
     required this.fenix,
     required this.tag,
     required this.lateRemove,
+    this.bindingOwnerRouteName,
   });
 
   void _showInitLog() {

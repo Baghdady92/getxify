@@ -3,7 +3,7 @@ part of '../rx_types.dart';
 /// Create a set similar to `Set<T>` but reactive.
 class RxSet<E> extends GetListenable<Set<E>>
     with SetMixin<E>, RxObjectMixin<Set<E>> {
-  RxSet([super.initial = const {}]);
+  RxSet([Set<E>? initial]) : super(initial ?? <E>{});
 
   factory RxSet.from(Iterable elements) {
     return RxSet(Set.from(elements));
@@ -130,14 +130,40 @@ extension SetExtension<E> on Set<E> {
   }
 
   /// Replaces all existing items of this set with [item]
+  ///
+  /// On an [RxSet] the backing set is replaced with a fresh mutable set
+  /// rather than mutated in place, so this works even when the set was
+  /// created from an unmodifiable source (e.g. `const {}` or
+  /// `Set.unmodifiable`), and listeners are notified exactly once.
   void assign(E item) {
-    clear();
-    add(item);
+    if (this is RxSet) {
+      final rx = this as RxSet;
+      // toSet() preserves the backing set's runtime element type while
+      // always producing a mutable copy.
+      rx.value = rx.value.toSet()
+        ..clear()
+        ..add(item);
+    } else {
+      clear();
+      add(item);
+    }
   }
 
   /// Replaces all existing items of this set with [items]
+  ///
+  /// On an [RxSet] the backing set is replaced with a fresh mutable set
+  /// rather than mutated in place, so this works even when the set was
+  /// created from an unmodifiable source (e.g. `const {}` or
+  /// `Set.unmodifiable`), and listeners are notified exactly once.
   void assignAll(Iterable<E> items) {
-    clear();
-    addAll(items);
+    if (this is RxSet) {
+      final rx = this as RxSet;
+      rx.value = rx.value.toSet()
+        ..clear()
+        ..addAll(items);
+    } else {
+      clear();
+      addAll(items);
+    }
   }
 }

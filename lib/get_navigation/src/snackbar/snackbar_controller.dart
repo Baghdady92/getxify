@@ -49,7 +49,12 @@ class SnackbarController {
   Future<void> get future => _transitionCompleter.future;
 
   /// Close the snackbar with animation
+  ///
+  /// Calling this on a snackbar that has already been closed is a no-op.
+  /// Closing a snackbar that is still waiting in the queue cancels it, so
+  /// it will never be displayed.
   Future<void> close({bool withAnimations = true}) async {
+    if (_transitionCompleter.isCompleted) return;
     if (!withAnimations) {
       _removeOverlay();
       return;
@@ -239,6 +244,7 @@ class SnackbarController {
     return Builder(
       builder: (_) {
         return MouseRegion(
+          hitTestBehavior: HitTestBehavior.deferToChild,
           onEnter: (_) =>
               snackbar.onHover?.call(snackbar, SnackHoverState.entered),
           onExit: (_) =>
@@ -264,7 +270,7 @@ class SnackbarController {
 
   Widget _getDismissibleSnack(Widget child) {
     return Dismissible(
-      behavior: snackbar.hitTestBehavior ?? HitTestBehavior.opaque,
+      behavior: snackbar.hitTestBehavior ?? HitTestBehavior.deferToChild,
       direction: snackbar.dismissDirection ?? _getDefaultDismissDirection(),
       resizeDuration: null,
       confirmDismiss: (_) {
@@ -314,48 +320,66 @@ class SnackbarController {
   }
 
   void _removeEntry() {
-    assert(
-      !_transitionCompleter.isCompleted,
-      'Cannot remove entry from a disposed snackbar',
-    );
+    if (_transitionCompleter.isCompleted) return;
 
     _cancelTimer();
 
+    final controller = _controller;
+    if (controller == null) {
+      // The snackbar is still waiting in the queue and was never displayed,
+      // so there is no animation to reverse: tear it down directly.
+      _removeOverlay();
+      return;
+    }
+
     if (_wasDismissedBySwipe) {
-      Timer(const Duration(milliseconds: 200), _controller!.reset);
+      Timer(const Duration(milliseconds: 200), controller.reset);
       _wasDismissedBySwipe = false;
     } else {
-      _controller!.reverse();
+      controller.reverse();
     }
   }
 
   void _removeOverlay() {
+    if (_transitionCompleter.isCompleted) return;
+
+    _cancelTimer();
+
     if (!_isTesting) {
       for (var element in _overlayEntries) {
         element.remove();
       }
     }
 
-    assert(
-      !_transitionCompleter.isCompleted,
-      'Cannot remove overlay from a disposed snackbar',
-    );
     _controller?.dispose();
     _overlayEntries.clear();
     _transitionCompleter.complete();
   }
 
   Future<void> _show() {
+    // The snackbar may have been closed while it was still waiting in the
+    // queue; in that case it must never mount its overlay.
+    if (_transitionCompleter.isCompleted) return future;
     _configureOverlay();
     return future;
   }
 
-  static Future<void> cancelAllSnackbars() async {
-    await GetRootState.controller.config.snackBarQueue.cancelAllJobs();
+  /// Closes all snackbars, the one being shown and the queued ones.
+  ///
+  /// When [withAnimations] is false, the current snackbar is removed
+  /// immediately, without playing its exit animation.
+  static Future<void> cancelAllSnackbars({bool withAnimations = true}) async {
+    await GetRootState.controller.config.snackBarQueue
+        .cancelAllJobs(withAnimations: withAnimations);
   }
 
-  static Future<void> closeCurrentSnackbar() async {
-    await GetRootState.controller.config.snackBarQueue.closeCurrentJob();
+  /// Closes the snackbar currently being shown.
+  ///
+  /// When [withAnimations] is false, the snackbar is removed immediately,
+  /// without playing its exit animation.
+  static Future<void> closeCurrentSnackbar({bool withAnimations = true}) async {
+    await GetRootState.controller.config.snackBarQueue
+        .closeCurrentJob(withAnimations: withAnimations);
   }
 }
 
@@ -377,8 +401,8 @@ class SnackBarQueue {
     return data;
   }
 
-  Future<void> cancelAllJobs() async {
-    await _currentSnackbar?.close();
+  Future<void> cancelAllJobs({bool withAnimations = true}) async {
+    await _currentSnackbar?.close(withAnimations: withAnimations);
     _queue.cancelAllJobs();
     _snackbarList.clear();
   }
@@ -397,8 +421,8 @@ class SnackBarQueue {
     _snackbarList.clear();
   }
 
-  Future<void> closeCurrentJob() async {
+  Future<void> closeCurrentJob({bool withAnimations = true}) async {
     if (_currentSnackbar == null) return;
-    await _currentSnackbar!.close();
+    await _currentSnackbar!.close(withAnimations: withAnimations);
   }
 }

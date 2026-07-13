@@ -30,11 +30,22 @@ class GetBackGestureDetector<T> extends StatefulWidget {
     required this.popGestureEnable,
     required this.onStartPopGesture,
     required this.child,
+    this.flipDirection = false,
   });
 
   final bool limitedSwipe;
   final double gestureWidth;
   final double initialOffset;
+
+  /// Whether the pop gesture runs opposite to the default reading direction.
+  ///
+  /// The default back gesture follows Cupertino semantics: in a
+  /// left-to-right locale the page is dragged towards the trailing (right)
+  /// edge. Transitions that enter from the leading edge (such as
+  /// [Transition.leftToRight]) exit towards it, so their pop gesture must
+  /// track drags in the opposite direction and move the page with the
+  /// finger instead of against it.
+  final bool flipDirection;
 
   final Widget child;
   final ValueGetter<bool> popGestureEnable;
@@ -52,6 +63,24 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
     assert(mounted);
     assert(_backGestureController == null);
     _backGestureController = widget.onStartPopGesture();
+  }
+
+  @override
+  void dispose() {
+    // If this is disposed mid drag (for example because the transition
+    // builder swapped to a different subtree), the navigator must still be
+    // told that the user gesture ended, mirroring Flutter's
+    // _CupertinoBackGestureDetectorState.dispose.
+    if (_backGestureController != null) {
+      final navigator = _backGestureController!.navigator;
+      _backGestureController = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (navigator.mounted && navigator.userGestureInProgress) {
+          navigator.didStopUserGesture();
+        }
+      });
+    }
+    super.dispose();
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
@@ -82,12 +111,11 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
   }
 
   double _convertToLogical(double value) {
-    switch (Directionality.of(context)) {
-      case TextDirection.rtl:
-        return -value;
-      case TextDirection.ltr:
-        return value;
-    }
+    final logicalValue = switch (Directionality.of(context)) {
+      TextDirection.rtl => -value,
+      TextDirection.ltr => value,
+    };
+    return widget.flipDirection ? -logicalValue : logicalValue;
   }
 
   @override
@@ -107,6 +135,7 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
                   debugOwner: this,
                   isRTL: directionality == TextDirection.rtl,
                   isLTR: directionality == TextDirection.ltr,
+                  flipDirection: widget.flipDirection,
                   hasbackGestureController: () =>
                       _backGestureController != null,
                   popGestureEnable: widget.popGestureEnable,
@@ -121,14 +150,19 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
       },
     );
 
+    final dragAreaWidth = _dragAreaWidth(context);
     return Stack(
       fit: StackFit.passthrough,
       children: [
         widget.child,
-        if (widget.limitedSwipe)
+        if (widget.limitedSwipe && dragAreaWidth.isFinite)
           PositionedDirectional(
-            start: widget.initialOffset,
-            width: _dragAreaWidth(context),
+            // A flipped route exits towards the edge it entered from, so its
+            // back drag starts at the trailing edge instead of the leading
+            // one.
+            start: widget.flipDirection ? null : widget.initialOffset,
+            end: widget.flipDirection ? widget.initialOffset : null,
+            width: dragAreaWidth,
             top: 0,
             bottom: 0,
             child: gestureDetector,
@@ -142,7 +176,10 @@ class GetBackGestureDetectorState<T> extends State<GetBackGestureDetector<T>> {
   double _dragAreaWidth(BuildContext context) {
     // For devices with notches, the drag area needs to be larger on the side
     // that has the notch.
-    final dragAreaWidth = Directionality.of(context) == TextDirection.ltr
+    final atPhysicalLeft =
+        (Directionality.of(context) == TextDirection.ltr) !=
+        widget.flipDirection;
+    final dragAreaWidth = atPhysicalLeft
         ? context.mediaQuery.padding.left
         : context.mediaQuery.padding.right;
     return max(dragAreaWidth, widget.gestureWidth);
@@ -206,7 +243,7 @@ class GetBackGestureController<T> {
       );
     } else {
       // This route is destined to pop at this point. Reuse navigator's pop.
-      Get.back();
+      navigator.pop();
 
       // The popping may have finished inline if already at the
       // target destination.
@@ -333,20 +370,43 @@ Cannot read the previousTitle for a route that has not yet been installed''');
       animation,
       secondaryAnimation,
       child,
+      limitedSwipe: _limitedSwipe,
     );
+  }
+
+  /// Whether the back gesture is only accepted near the edge the page
+  /// entered from, mirroring the native iOS edge swipe.
+  ///
+  /// A route that explicitly opts into the pop gesture with
+  /// `popGesture: true` keeps the historical full-screen swipe area.
+  /// Providing a [gestureWidth] always bounds the area to the returned
+  /// width; returning `double.infinity` restores full-screen detection.
+  bool get _limitedSwipe {
+    if (gestureWidth != null) return true;
+    final route = this;
+    return route is! GetPageRoute<T> || route.popGesture != true;
   }
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
     // Don't perform outgoing animation if the next route is a
-    // fullscreen dialog.
+    // fullscreen dialog, or slides in from the bottom like one
+    // (Transition.downToUp); moving the outgoing page would reveal the
+    // navigator background behind both pages.
     return (nextRoute is GetPageRouteTransitionMixin &&
             !nextRoute.fullscreenDialog &&
-            nextRoute.showCupertinoParallax) ||
+            nextRoute.showCupertinoParallax &&
+            !_slidesFromBottom(nextRoute)) ||
+        (nextRoute is MaterialRouteTransitionMixin &&
+            !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoRouteTransitionMixin &&
             !nextRoute.fullscreenDialog) ||
         (nextRoute is CupertinoSheetRoute && !nextRoute.fullscreenDialog);
   }
+
+  static bool _slidesFromBottom(GetPageRouteTransitionMixin<dynamic> route) =>
+      route is GetPageRoute &&
+      (route.transition ?? Get.defaultTransition) == Transition.downToUp;
 
   @override
   void didChangePrevious(Route<dynamic>? previousRoute) {
@@ -452,6 +512,7 @@ Cannot read the previousTitle for a route that has not yet been installed''');
               gestureWidth:
                   route.gestureWidth?.call(context) ?? _kBackGestureWidth,
               initialOffset: initialOffset,
+              flipDirection: true,
               child: child,
             ),
           );
@@ -621,6 +682,7 @@ Cannot read the previousTitle for a route that has not yet been installed''');
               gestureWidth:
                   route.gestureWidth?.call(context) ?? _kBackGestureWidth,
               initialOffset: initialOffset,
+              flipDirection: true,
               child: child,
             ),
           );
@@ -710,7 +772,28 @@ Cannot read the previousTitle for a route that has not yet been installed''');
           );
 
         case Transition.native:
-          return const PageTransitionsTheme().buildTransitions(
+          return Theme.of(context).pageTransitionsTheme.buildTransitions(
+            route,
+            context,
+            iosAnimation,
+            secondaryAnimation,
+            GetBackGestureDetector<T>(
+              popGestureEnable: () =>
+                  _isPopGestureEnabled(route, canSwipe(route), context),
+              onStartPopGesture: () {
+                assert(_isPopGestureEnabled(route, canSwipe(route), context));
+                return _startPopGesture(route);
+              },
+              limitedSwipe: limitedSwipe,
+              gestureWidth:
+                  route.gestureWidth?.call(context) ?? _kBackGestureWidth,
+              initialOffset: initialOffset,
+              child: child,
+            ),
+          );
+
+        case Transition.predictiveBack:
+          return const PredictiveBackPageTransitionsBuilder().buildTransitions(
             route,
             context,
             iosAnimation,
@@ -860,10 +943,12 @@ class _DirectionalityDragGestureRecognizer
   final ValueGetter<bool> hasbackGestureController;
   final bool isRTL;
   final bool isLTR;
+  final bool flipDirection;
 
   _DirectionalityDragGestureRecognizer({
     required this.isRTL,
     required this.isLTR,
+    required this.flipDirection,
     required this.popGestureEnable,
     required this.hasbackGestureController,
     super.debugOwner,
@@ -871,7 +956,7 @@ class _DirectionalityDragGestureRecognizer
 
   @override
   void handleEvent(PointerEvent event) {
-    final dx = event.delta.dx;
+    final dx = flipDirection ? -event.delta.dx : event.delta.dx;
     if (hasbackGestureController() ||
         popGestureEnable() && (isRTL && dx < 0 || isLTR && dx > 0 || dx == 0)) {
       super.handleEvent(event);

@@ -5,6 +5,13 @@ import 'animations.dart';
 /// A widget that animates a [tween] value over a [duration] after a specified [delay].
 ///
 /// Implements animation lifecycle hooks such as [onStart] and [onComplete].
+///
+/// The animation plays once, when the widget is first inserted into the tree.
+/// Rebuilding the widget with a different [duration], [tween], or [curve]
+/// updates the animation configuration but does not replay it. To replay the
+/// animation, either provide a new [Key] (recreating the state), enable
+/// [autoPlayOnUpdate], or keep the [AnimationController] received in
+/// [onStart]/[onComplete] and call `controller.forward(from: 0)`.
 class GetAnimatedBuilder<T> extends StatefulWidget {
   /// The duration of the animation transition itself.
   final Duration duration;
@@ -33,6 +40,15 @@ class GetAnimatedBuilder<T> extends StatefulWidget {
   /// The animation curve to apply to the transition.
   final Curve curve;
 
+  /// Whether to replay the animation from the beginning when the widget is
+  /// rebuilt with a different [tween].
+  ///
+  /// Useful when the tween is derived from reactive state (for example inside
+  /// an `Obx`): each change to the observed value replays the animation with
+  /// the new bounds. The replay starts immediately, without waiting [delay]
+  /// again. Defaults to false, preserving the play-once behavior.
+  final bool autoPlayOnUpdate;
+
   /// Returns the total duration including both the animation duration and the delay.
   Duration get totalDuration => duration + delay;
 
@@ -48,6 +64,7 @@ class GetAnimatedBuilder<T> extends StatefulWidget {
     required this.builder,
     required this.child,
     required this.delay,
+    this.autoPlayOnUpdate = false,
   });
 
   @override
@@ -58,7 +75,8 @@ class GetAnimatedBuilder<T> extends StatefulWidget {
 class GetAnimatedBuilderState<T> extends State<GetAnimatedBuilder<T>>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<T> _animation;
+  late CurvedAnimation _curvedAnimation;
+  late Animation<T> _animation;
 
   bool _wasStarted = false;
 
@@ -114,9 +132,11 @@ class GetAnimatedBuilderState<T> extends State<GetAnimatedBuilder<T>>
 
     _controller.addStatusListener(_listener);
 
-    _animation = widget.tween.animate(
-      CurvedAnimation(parent: _controller, curve: widget.curve),
+    _curvedAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: widget.curve,
     );
+    _animation = widget.tween.animate(_curvedAnimation);
 
     Future.delayed(widget.delay, () {
       if (mounted) {
@@ -129,8 +149,37 @@ class GetAnimatedBuilderState<T> extends State<GetAnimatedBuilder<T>>
   }
 
   @override
+  void didUpdateWidget(covariant GetAnimatedBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.duration != oldWidget.duration) {
+      _controller.duration = widget.duration;
+    }
+
+    final tweenChanged = widget.tween.begin != oldWidget.tween.begin ||
+        widget.tween.end != oldWidget.tween.end;
+
+    if (tweenChanged || widget.curve != oldWidget.curve) {
+      // Dispose the replaced CurvedAnimation: it holds a status listener on
+      // the controller and would otherwise leak.
+      _curvedAnimation.dispose();
+      _curvedAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: widget.curve,
+      );
+      _animation = widget.tween.animate(_curvedAnimation);
+    }
+
+    if (widget.autoPlayOnUpdate && tweenChanged) {
+      _wasStarted = true;
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
   void dispose() {
     _controller.removeStatusListener(_listener);
+    _curvedAnimation.dispose();
     _controller.dispose();
     super.dispose();
   }

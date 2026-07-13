@@ -3,7 +3,7 @@ part of '../rx_types.dart';
 /// Create a map similar to `Map<K, V>` but reactive.
 class RxMap<K, V> extends GetListenable<Map<K, V>>
     with MapMixin<K, V>, RxObjectMixin<Map<K, V>> {
-  RxMap([super.initial = const {}]);
+  RxMap([Map<K, V>? initial]) : super(initial ?? <K, V>{});
 
   factory RxMap.from(Map<K, V> other) {
     return RxMap(Map.from(other));
@@ -132,11 +132,14 @@ extension MapExtension<K, V> on Map<K, V> {
   }
 
   /// Replaces all existing items of this map with [key] and [val].
+  ///
+  /// On an [RxMap] the backing map is replaced with a fresh mutable map
+  /// rather than mutated in place, so this works even when the map was
+  /// created from an unmodifiable source (e.g. `const {}` or
+  /// `Map.unmodifiable`), and listeners are notified exactly once.
   void assign(K key, V val) {
-    if (this is RxMap) {
-      final map = (this as RxMap);
-      map.value.clear();
-      this[key] = val;
+    if (this is RxMap<K, V>) {
+      (this as RxMap<K, V>).value = <K, V>{key: val};
     } else {
       clear();
       this[key] = val;
@@ -151,9 +154,9 @@ extension MapExtension<K, V> on Map<K, V> {
     if (this is RxMap) {
       final map = (this as RxMap);
       if (map.value == val) return;
+      // The value setter refreshes exactly once when the instance differs,
+      // which the guard above already established.
       map.value = val;
-      // ignore: invalid_use_of_protected_member
-      map.refresh();
     } else {
       if (this == val) return;
       clear();

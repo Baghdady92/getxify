@@ -169,22 +169,54 @@ abstract class Bind<T> extends StatelessWidget {
 
   static bool isPrepared<S>({String? tag}) => Get.isPrepared<S>(tag: tag);
 
-  static void replace<P>(P child, {String? tag}) {
-    final info = Get.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Get.put(child, tag: tag, permanent: permanent);
-  }
+  /// Replaces the registered instance of type [P] with a new [child]
+  /// instance.
+  ///
+  /// Delegates to [Get.replace], so registrations that a plain [delete]
+  /// keeps alive (a `fenix` factory, a [GetxService], or an entry with a
+  /// pending `lateRemove` disposal) are evicted and the new [child] always
+  /// takes their place.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  static void replace<P>(P child, {String? tag}) =>
+      Get.replace<P>(child, tag: tag);
 
+  /// Replaces the registered dependency of type [P] with a new lazy
+  /// factory [builder].
+  ///
+  /// Delegates to [Get.lazyReplace], so registrations that a plain
+  /// [delete] keeps alive (a `fenix` factory, a [GetxService], or an entry
+  /// with a pending `lateRemove` disposal) are evicted and the new
+  /// [builder] always takes their place.
+  ///
+  /// - [tag] Optional tag to identify the instance.
+  /// - [fenix] If true, the builder persists in memory to recreate the
+  ///   instance if deleted. Defaults to true when the replaced instance
+  ///   was permanent.
   static void lazyReplace<P>(
     InstanceBuilderCallback<P> builder, {
     String? tag,
     bool? fenix,
-  }) {
-    final info = Get.getInstanceInfo<P>(tag: tag);
-    final permanent = (info.isPermanent ?? false);
-    delete<P>(tag: tag, force: permanent);
-    Get.lazyPut(builder, tag: tag, fenix: fenix ?? permanent);
+  }) => Get.lazyReplace<P>(builder, tag: tag, fenix: fenix);
+
+  /// Injects an instance of [S] built asynchronously by [builder] into the
+  /// dependency manager, returning a [Bind] for the registered instance.
+  ///
+  /// Delegates to [Get.putAsync]: the [builder] future is awaited and the
+  /// resulting instance is registered like [put], so the regular lifecycle
+  /// (`onInit`/`onReady`) runs on the ready instance. Perform any
+  /// asynchronous setup inside [builder] **before** returning the instance.
+  ///
+  /// - [tag] Optional tag to identify this specific instance.
+  /// - [permanent] If true, prevents the instance from being deleted by
+  ///   SmartManagement.
+  static Future<Bind<S>> putAsync<S>(
+    AsyncInstanceBuilderCallback<S> builder, {
+    String? tag,
+    bool permanent = false,
+  }) async {
+    await Get.putAsync<S>(builder, tag: tag, permanent: permanent);
+    return _FactoryBind<S>(autoRemove: permanent, assignId: true, tag: tag);
   }
 
   factory Bind.builder({
@@ -350,6 +382,7 @@ class Binder<T> extends InheritedWidget {
   @override
   bool updateShouldNotify(Binder<T> oldWidget) {
     return oldWidget.id != id ||
+        oldWidget.tag != tag ||
         oldWidget.global != global ||
         oldWidget.autoRemove != autoRemove ||
         oldWidget.assignId != assignId;
@@ -392,39 +425,59 @@ class BindElement<T> extends InheritedElement {
   Object? _filter;
 
   void initState() {
+    _resolveController(widget);
     widget.initState?.call(this);
+  }
 
-    var isRegistered = Get.isRegistered<T>(tag: widget.tag);
+  /// Resolves the controller this element binds to, using [binder]'s
+  /// configuration (tag, `init`/`create` builders, `global`).
+  ///
+  /// Called from [initState] with the initial widget and from [update]
+  /// with the incoming widget when its `tag` changed, so the element
+  /// rebinds to the instance registered under the new tag.
+  void _resolveController(Binder<T> binder) {
+    var isRegistered = Get.isRegistered<T>(tag: binder.tag);
 
-    if (widget.global) {
+    if (binder.global) {
       if (isRegistered) {
-        if (Get.isPrepared<T>(tag: widget.tag)) {
+        if (Get.isPrepared<T>(tag: binder.tag)) {
           _isCreator = true;
         } else {
           _isCreator = false;
         }
 
-        _controllerBuilder = () => Get.find<T>(tag: widget.tag);
+        _controllerBuilder = () => Get.find<T>(tag: binder.tag);
       } else {
+        if (binder.create == null && binder.init == null) {
+          throw BindError(
+            controller: T,
+            tag: binder.tag,
+            message:
+                'No instance of "$T" '
+                '${binder.tag == null ? 'without a tag' : 'with tag "${binder.tag}"'} '
+                'is registered, and no "init" or "create" builder was '
+                'supplied to this GetBuilder/Bind. If "$T" was registered '
+                'with Get.put(..., tag: ...), pass the same tag to this '
+                'widget, or provide an "init"/"create" builder so it can '
+                'create the instance itself.',
+          );
+        }
         _controllerBuilder = () =>
-            (widget.create?.call(this) ?? widget.init?.call());
+            (binder.create?.call(this) ?? binder.init?.call());
         _isCreator = true;
-        if (widget.lazy) {
-          Get.lazyPut<T>(_controllerBuilder!, tag: widget.tag);
+        if (binder.lazy) {
+          Get.lazyPut<T>(_controllerBuilder!, tag: binder.tag);
         } else {
-          Get.put<T>(_controllerBuilder!(), tag: widget.tag);
+          Get.put<T>(_controllerBuilder!(), tag: binder.tag);
         }
       }
     } else {
-      if (widget.create != null) {
-        _controllerBuilder = () => widget.create!.call(this);
-        Get.spawn<T>(_controllerBuilder!, tag: widget.tag, permanent: false);
+      if (binder.create != null) {
+        _controllerBuilder = () => binder.create!.call(this);
+        Get.spawn<T>(_controllerBuilder!, tag: binder.tag, permanent: false);
       } else {
-        _controllerBuilder = widget.init;
+        _controllerBuilder = binder.init;
       }
-      _controllerBuilder =
-          (widget.create != null ? () => widget.create!.call(this) : null) ??
-          widget.init;
       _isCreator = true;
       _needStart = true;
     }
@@ -460,6 +513,27 @@ class BindElement<T> extends InheritedElement {
       final stream = localController.stream.listen((_) => filter());
       _remove = () => stream.cancel();
     }
+
+    _tickerProvider = localController is GetTickerProvider
+        ? localController
+        : null;
+    _updateTickerMode();
+  }
+
+  bool _isMounted = false;
+
+  /// The controller cast to [GetTickerProvider] when it uses
+  /// [GetSingleTickerProviderStateMixin] or [GetTickerProviderStateMixin],
+  /// cached in [_subscribeToController] so [_updateTickerMode] does not
+  /// repeat the type check on every dependency change.
+  GetTickerProvider? _tickerProvider;
+
+  /// Forwards this element's [TickerMode] to the controller when it is a
+  /// [GetTickerProvider], so its tickers are muted while tickers are
+  /// disabled in this subtree.
+  void _updateTickerMode() {
+    if (!_isMounted) return;
+    _tickerProvider?.didChangeDependencies(this);
   }
 
   void _filterUpdate() {
@@ -472,13 +546,79 @@ class BindElement<T> extends InheritedElement {
     }
   }
 
-  void dispose() {
-    widget.dispose?.call(this);
+  /// Marks controllers whose disposal was requested by their creator
+  /// element while other elements were still subscribed, so the last
+  /// unsubscribing element can finish the disposal.
+  static final Expando<bool> _deferredDisposal = Expando<bool>();
+
+  /// Whether [controller] still has live listeners other than this
+  /// element's own (already removed) subscription — e.g. a freshly
+  /// inflated [BindElement] that replaced this one after a tree-shape
+  /// change (LayoutBuilder breakpoint swap), or another `GetBuilder`
+  /// on the same still-visible page.
+  static bool _hasOtherSubscribers(Object? controller) =>
+      controller is ListNotifierSingleMixin &&
+      !controller.isDisposed &&
+      controller.listenersLength > 0;
+
+  /// Finishes a disposal deferred by this controller's creator element:
+  /// deletes the controller from the registry when it is still the
+  /// registered singleton for this key, otherwise closes the orphaned
+  /// instance directly.
+  void _completeDeferredDisposal(Object controller) {
+    _deferredDisposal[controller] = null;
+    final info = Get.getInstanceInfo<T>(tag: widget.tag);
+    if (info.isRegistered &&
+        (info.isSingleton ?? false) &&
+        (info.isInit ?? false) &&
+        identical(Get.find<T>(tag: widget.tag), controller)) {
+      Get.delete<T>(tag: widget.tag);
+    } else if (controller is GetLifeCycleMixin) {
+      controller.onDelete();
+    }
+  }
+
+  /// Detaches this element from its current controller: removes the
+  /// listener subscription and applies the creator-side removal rules
+  /// (autoRemove/assignId deletion, deferred disposal) against the
+  /// current [widget]'s tag.
+  ///
+  /// Shared by [dispose] (element unmount) and [update] (rebinding when
+  /// the widget's `tag` changed).
+  void _unbindController() {
+    _remove?.call();
+    _remove = null;
+
+    final localController = _controller;
+
     if (_isCreator! || widget.assignId) {
       if (widget.autoRemove && Get.isRegistered<T>(tag: widget.tag)) {
-        Get.delete<T>(tag: widget.tag);
+        if (_hasOtherSubscribers(localController)) {
+          _deferredDisposal[localController as Object] = true;
+        } else {
+          Get.delete<T>(tag: widget.tag);
+        }
+      } else if (_wasStarted &&
+          widget.autoRemove &&
+          localController is GetLifeCycleMixin &&
+          !Get.isRegistered<T>(tag: widget.tag)) {
+        if (_hasOtherSubscribers(localController)) {
+          _deferredDisposal[localController as Object] = true;
+        } else {
+          localController.onDelete();
+        }
       }
+    } else if (localController is ListNotifierSingleMixin &&
+        _deferredDisposal[localController] == true &&
+        !_hasOtherSubscribers(localController)) {
+      _completeDeferredDisposal(localController);
     }
+  }
+
+  void dispose() {
+    widget.dispose?.call(this);
+
+    _unbindController();
 
     for (final disposer in disposers) {
       disposer();
@@ -486,14 +626,12 @@ class BindElement<T> extends InheritedElement {
 
     disposers.clear();
 
-    _remove?.call();
     _controller = null;
+    _tickerProvider = null;
     _isCreator = null;
-    _remove = null;
     _filter = null;
     _needStart = null;
     _controllerBuilder = null;
-    _controller = null;
   }
 
   @override
@@ -509,18 +647,51 @@ class BindElement<T> extends InheritedElement {
 
   @override
   void update(Binder<T> newWidget) {
-    final oldNotifier = widget.id;
-    final newNotifier = newWidget.id;
-    if (oldNotifier != newNotifier && _wasStarted) {
-      _subscribeToController();
+    if (widget.tag != newWidget.tag) {
+      _rebindController(newWidget);
+    } else {
+      final oldNotifier = widget.id;
+      final newNotifier = newWidget.id;
+      if (oldNotifier != newNotifier && _wasStarted) {
+        _subscribeToController();
+      }
     }
     widget.didUpdateWidget?.call(widget, this);
     super.update(newWidget);
   }
 
+  /// Releases the controller bound under the previous `tag` and resolves
+  /// the one that [newWidget]'s tag refers to, so a rebuild that changes
+  /// `tag` binds dependents to the new instance instead of keeping the
+  /// stale one.
+  ///
+  /// The old controller goes through the same removal rules as on
+  /// unmount ([_unbindController]), so a controller this element created
+  /// with `autoRemove` is deleted (or defer-disposed while other
+  /// elements still subscribe) under its original tag.
+  void _rebindController(Binder<T> newWidget) {
+    _unbindController();
+    _controller = null;
+    _controllerBuilder = null;
+    _isCreator = false;
+    _needStart = false;
+    _wasStarted = false;
+    _filter = null;
+    _tickerProvider = null;
+    _resolveController(newWidget);
+  }
+
+  @override
+  void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _isMounted = true;
+    _updateTickerMode();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _updateTickerMode();
     widget.didChangeDependencies?.call(this);
   }
 
@@ -545,6 +716,7 @@ class BindElement<T> extends InheritedElement {
 
   @override
   void unmount() {
+    _isMounted = false;
     dispose();
     super.unmount();
   }
@@ -553,13 +725,23 @@ class BindElement<T> extends InheritedElement {
 class BindError<T> extends Error {
   /// The type of the class the user tried to retrieve
   final T controller;
+
+  /// The tag used in the failed lookup, if any.
   final String? tag;
 
+  /// Optional description of why the bind failed; when provided it is
+  /// used verbatim instead of the generic "no ancestor found" message.
+  final String? message;
+
   /// Creates a [BindError]
-  BindError({required this.controller, required this.tag});
+  BindError({required this.controller, required this.tag, this.message});
 
   @override
   String toString() {
+    if (message != null) {
+      return 'Error: $message';
+    }
+
     if (controller == 'dynamic') {
       return '''Error: please specify type [<T>] when calling context.listen<T>() or context.find<T>() method.''';
     }

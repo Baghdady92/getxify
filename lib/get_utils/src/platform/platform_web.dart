@@ -1,13 +1,18 @@
 import 'package:web/web.dart' as html;
 
+import 'platform_web_detect.dart';
+
 html.Navigator _navigator = html.window.navigator;
 
 // ignore: avoid_classes_with_only_static_members
 class GeneralPlatform {
   static bool get isWeb => true;
 
-  static bool get isMacOS =>
-      _navigator.appVersion.contains('Mac OS') && !GeneralPlatform.isIOS;
+  static bool get isMacOS => WebPlatformDetect.isMacOS(
+    _navigator.appVersion,
+    _navigator.platform,
+    _navigator.maxTouchPoints,
+  );
 
   static bool get isWindows => _navigator.appVersion.contains('Win');
 
@@ -19,11 +24,8 @@ class GeneralPlatform {
   // @check https://developer.chrome.com/multidevice/user-agent
   static bool get isAndroid => _navigator.appVersion.contains('Android ');
 
-  static bool get isIOS {
-    // maxTouchPoints is needed to separate iPad iOS13 vs new MacOS
-    return RegExp(r'/iPad|iPhone|iPod/').hasMatch(_navigator.platform) ||
-        (_navigator.platform == 'MacIntel' && _navigator.maxTouchPoints > 1);
-  }
+  static bool get isIOS =>
+      WebPlatformDetect.isIOS(_navigator.platform, _navigator.maxTouchPoints);
 
   static bool get isFuchsia => false;
 

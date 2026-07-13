@@ -34,6 +34,35 @@ class GetObserver extends NavigatorObserver {
 
   GetObserver([this.routing, this._routeSend]);
 
+  /// Schedules dependency cleanup for a route that does not report its own
+  /// disposal to the [RouterReportManager] — any route not created by GetX,
+  /// e.g. Flutter's `showModalBottomSheet`/`showDialog` overlays or an
+  /// imperative `Navigator.push` route.
+  ///
+  /// GetX-created routes ([GetPageRoute], [GetDialogRoute] and
+  /// [GetModalBottomSheetRoute]) report their disposal themselves, which
+  /// releases the dependencies registered while they were the current
+  /// route. Dependencies registered inside a native overlay (e.g. a
+  /// `Get.put` in a `showModalBottomSheet` builder) are linked to the
+  /// native route, which never reports back, so without this hook they
+  /// would leak after the overlay is dismissed (#2439). Cleanup runs once
+  /// the route is disposed — after its exit transition — so widgets still
+  /// animating out never observe deleted dependencies.
+  void _reportDisposalOfNonReportingRoute(Route route) {
+    if (route is PageRouteReportMixin ||
+        route is GetDialogRoute ||
+        route is GetModalBottomSheetRoute) {
+      return;
+    }
+    if (route is TransitionRoute) {
+      route.completed.whenComplete(() {
+        RouterReportManager.instance.reportRouteDispose(route);
+      });
+    } else {
+      RouterReportManager.instance.reportRouteDispose(route);
+    }
+  }
+
   @override
   void didPop(Route route, Route? previousRoute) {
     super.didPop(route, previousRoute);
@@ -52,17 +81,25 @@ class GetObserver extends NavigatorObserver {
     if (route is GetPageRoute) {
       RouterReportManager.instance.reportRouteWillDispose(route);
     }
+    _reportDisposalOfNonReportingRoute(route);
 
     // Here we use a 'inverse didPush set', meaning that we use
     // previous route instead of 'route' because this is
     // a 'inverse push'
     _routeSend?.update((value) {
-      // Only PageRoute is allowed to change current value
-      if (previousRoute is PageRoute) {
-        value.current = _extractRouteName(previousRoute) ?? '';
-        value.previous = newRoute.name ?? '';
-      } else if (value.previous.isNotEmpty) {
-        value.current = value.previous;
+      // Only popping a page route may change current/previous values.
+      // Overlay pops (dialogs/bottom sheets) leave them untouched so that
+      // synthetic overlay names never leak into the routing history.
+      if (route is PageRoute) {
+        if (previousRoute is PageRoute) {
+          value.current = _extractRouteName(previousRoute) ?? '';
+          value.previous = currentRoute.name ?? '';
+        } else if (value.previous.isNotEmpty) {
+          // The revealed route is pageless (e.g. a bottom sheet under the
+          // popped page), so fall back to the last known page below it.
+          value.current = value.previous;
+          value.previous = currentRoute.name ?? '';
+        }
       }
 
       value.args = previousRoute?.settings.arguments;
@@ -89,12 +126,19 @@ class GetObserver extends NavigatorObserver {
 
     RouterReportManager.instance.reportCurrentRoute(route);
     _routeSend?.update((value) {
+      // Only page routes are allowed to change current/previous values.
+      // Overlay pushes (dialogs/bottom sheets) leave them untouched so that
+      // synthetic overlay names never leak into the routing history.
       if (route is PageRoute) {
+        final previousRouteName = previousRoute is PageRoute
+            ? _extractRouteName(previousRoute)
+            : previousRoute != null && value.current.isNotEmpty
+            ? value.current
+            : null;
+        if (previousRouteName != null) {
+          value.previous = previousRouteName;
+        }
         value.current = newRoute.name ?? '';
-      }
-      final previousRouteName = _extractRouteName(previousRoute);
-      if (previousRouteName != null) {
-        value.previous = previousRouteName;
       }
 
       value.args = route.settings.arguments;
@@ -123,10 +167,15 @@ class GetObserver extends NavigatorObserver {
     Get.log("PREVIOUS ROUTE $previousRouteName");
 
     _routeSend?.update((value) {
-      value.route = previousRoute;
+      // A pages-API update (e.g. offAllNamed) reports the removal of every
+      // superseded page after the push of the new top page; the bottom-most
+      // removed route has no previous route, and letting it clobber the
+      // route/previous recorded by that push would make `Get.rawRoute`
+      // observed from a new page's controller null (#1237).
+      if (previousRoute != null) value.route = previousRoute;
       value.isBack = false;
       value.removed = routeName ?? '';
-      value.previous = previousRouteName ?? '';
+      value.previous = previousRouteName ?? value.previous;
       value.isBottomSheet = currentRoute.isBottomSheet
           ? false
           : value.isBottomSheet;
@@ -136,6 +185,7 @@ class GetObserver extends NavigatorObserver {
     if (route is GetPageRoute) {
       RouterReportManager.instance.reportRouteWillDispose(route);
     }
+    _reportDisposalOfNonReportingRoute(route);
     routing?.call(_routeSend);
   }
 
