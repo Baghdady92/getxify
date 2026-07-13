@@ -1,5 +1,7 @@
 ## 4.0.0
 
+This release is a massive contribution by [@Baghdady92](https://github.com/Baghdady92), who single-handedly resolved **111 issues** from the upstream GetX tracker, fixed long-standing bugs across routing, state management, dependency injection, and reactive types, and grew the test suite from 144 to 494 tests. Huge thanks for the extraordinary effort that made this release possible.
+
 This release resolves **111 issues reported on the upstream GetX issue tracker** ([jonataslaw/getx](https://github.com/jonataslaw/getx)) that were verified against this codebase. Every fix ships with regression tests; the test suite grew from 144 to 494 tests.
 
 ### Behavior Changes
