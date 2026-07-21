@@ -47,9 +47,6 @@ class GetCupertinoApp extends StatelessWidget {
   final bool showSemanticsDebugger;
   final bool debugShowCheckedModeBanner;
   final Map<ShortcutActivator, Intent>? shortcuts;
-  final ThemeData? highContrastTheme;
-  final ThemeData? highContrastDarkTheme;
-  final Map<Type, Action<Intent>>? actions;
   final Function(Routing?)? routingCallback;
   final Transition? defaultTransition;
   final bool? opaqueRoute;
@@ -74,6 +71,7 @@ class GetCupertinoApp extends StatelessWidget {
   final bool useInheritedMediaQuery;
   final List<Bind> binds;
   final ScrollBehavior? scrollBehavior;
+  final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
 
   /// The identifier to use for state restoration of this app.
   ///
@@ -111,6 +109,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.locale,
     this.binds = const [],
     this.scrollBehavior,
+    this.scaffoldMessengerKey,
     this.fallbackLocale,
     this.localizationsDelegates,
     this.localeListResolutionCallback,
@@ -136,9 +135,6 @@ class GetCupertinoApp extends StatelessWidget {
     this.popGesture,
     this.transitionDuration,
     this.defaultGlobalState,
-    this.highContrastTheme,
-    this.highContrastDarkTheme,
-    this.actions,
     this.restorationScopeId,
   }) : routeInformationProvider = null,
        backButtonDispatcher = null,
@@ -164,8 +160,6 @@ class GetCupertinoApp extends StatelessWidget {
     this.onGenerateTitle,
     this.useInheritedMediaQuery = false,
     this.color,
-    this.highContrastTheme,
-    this.highContrastDarkTheme,
     this.locale,
     this.localizationsDelegates,
     this.localeListResolutionCallback,
@@ -179,7 +173,7 @@ class GetCupertinoApp extends StatelessWidget {
     this.shortcuts,
     this.binds = const [],
     this.scrollBehavior,
-    this.actions,
+    this.scaffoldMessengerKey,
     this.customTransition,
     this.translationsKeys,
     this.translations,
@@ -215,6 +209,7 @@ class GetCupertinoApp extends StatelessWidget {
     return GetRoot(
       config: ConfigData(
         backButtonDispatcher: backButtonDispatcher,
+        scaffoldMessengerKey: scaffoldMessengerKey,
         binds: binds,
         customTransition: customTransition,
         defaultGlobalState: defaultGlobalState,
@@ -236,7 +231,6 @@ class GetCupertinoApp extends StatelessWidget {
         routerDelegate: routerDelegate,
         routerConfig: routerConfig,
         routingCallback: routingCallback,
-        scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
         smartManagement: smartManagement,
         transitionDuration: transitionDuration,
         translations: translations,
@@ -262,16 +256,19 @@ class GetCupertinoApp extends StatelessWidget {
               onGenerateRoute: onGenerateRoute,
               onGenerateInitialRoutes: onGenerateInitialRoutes,
               onUnknownRoute: onUnknownRoute,
-              builder: (context, child) => Directionality(
-                textDirection:
-                    textDirection ??
-                    (rtlLanguages.contains(Get.locale?.languageCode)
-                        ? TextDirection.rtl
-                        : TextDirection.ltr),
-                child: builder == null
-                    ? (child ?? const Material())
-                    : builder!(context, child ?? const Material()),
-              ),
+              builder: (context, child) {
+                final effectiveBuilder = builder;
+                return Directionality(
+                  textDirection:
+                      textDirection ??
+                      (rtlLanguages.contains(Get.locale?.languageCode)
+                          ? TextDirection.rtl
+                          : TextDirection.ltr),
+                  child: effectiveBuilder == null
+                      ? (child ?? const Material())
+                      : effectiveBuilder(context, child ?? const Material()),
+                );
+              },
               title: title,
               onGenerateTitle: onGenerateTitle,
               color: color,
@@ -296,16 +293,22 @@ class GetCupertinoApp extends StatelessWidget {
               ? CupertinoApp.router(
                   routerConfig: controller.config.routerConfig,
                   key: controller.config.unikey,
-                  builder: (context, child) => Directionality(
-                    textDirection:
-                        textDirection ??
-                        (rtlLanguages.contains(Get.locale?.languageCode)
-                            ? TextDirection.rtl
-                            : TextDirection.ltr),
-                    child: builder == null
-                        ? (child ?? const Material())
-                        : builder!(context, child ?? const Material()),
-                  ),
+                  builder: (context, child) {
+                    final effectiveBuilder = builder;
+                    return Directionality(
+                      textDirection:
+                          textDirection ??
+                          (rtlLanguages.contains(Get.locale?.languageCode)
+                              ? TextDirection.rtl
+                              : TextDirection.ltr),
+                      child: effectiveBuilder == null
+                          ? (child ?? const Material())
+                          : effectiveBuilder(
+                              context,
+                              child ?? const Material(),
+                            ),
+                    );
+                  },
                   title: title,
                   onGenerateTitle: onGenerateTitle,
                   color: color,
@@ -332,16 +335,22 @@ class GetCupertinoApp extends StatelessWidget {
                   routeInformationProvider:
                       controller.config.routeInformationProvider,
                   key: controller.config.unikey,
-                  builder: (context, child) => Directionality(
-                    textDirection:
-                        textDirection ??
-                        (rtlLanguages.contains(Get.locale?.languageCode)
-                            ? TextDirection.rtl
-                            : TextDirection.ltr),
-                    child: builder == null
-                        ? (child ?? const Material())
-                        : builder!(context, child ?? const Material()),
-                  ),
+                  builder: (context, child) {
+                    final effectiveBuilder = builder;
+                    return Directionality(
+                      textDirection:
+                          textDirection ??
+                          (rtlLanguages.contains(Get.locale?.languageCode)
+                              ? TextDirection.rtl
+                              : TextDirection.ltr),
+                      child: effectiveBuilder == null
+                          ? (child ?? const Material())
+                          : effectiveBuilder(
+                              context,
+                              child ?? const Material(),
+                            ),
+                    );
+                  },
                   title: title,
                   onGenerateTitle: onGenerateTitle,
                   color: color,

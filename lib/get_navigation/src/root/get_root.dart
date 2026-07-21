@@ -479,7 +479,6 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
   }
 
   set parameters(Map<String, String?> newParameters) {
-    // rootController.parameters = newParameters;
     config = config.copyWith(parameters: newParameters);
   }
 
@@ -594,7 +593,10 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
     return key;
   }
 
-  Map<String, GetDelegate> keys = {};
+  final Map<String, GetDelegate> _keys = {};
+
+  /// Public getter for nested delegate keys
+  Map<String, GetDelegate> get keys => _keys;
 
   GetDelegate? nestedKey(String? key) {
     if (key == null) {
@@ -602,15 +604,14 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
       if (config.routerDelegate == null) return null;
       return rootDelegate;
     }
-    keys.putIfAbsent(
+    _keys.putIfAbsent(
       key,
       () => GetDelegate(
         showHashOnUrl: true,
-        //debugLabel: 'Getx nested key: ${key.toString()}',
         pages: RouteDecoder.fromRoute(key).currentChildren ?? [],
       ),
     );
-    return keys[key];
+    return _keys[key];
   }
 
   @override
@@ -620,9 +621,6 @@ class GetRootState extends State<GetRoot> with WidgetsBindingObserver {
 
   String cleanRouteName(String name) {
     name = name.replaceAll('() => ', '');
-
-    /// uncomment for URL styling.
-    // name = name.paramCase!;
     if (!name.startsWith('/')) {
       name = '/$name';
     }

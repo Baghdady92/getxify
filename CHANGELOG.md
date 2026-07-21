@@ -1,3 +1,21 @@
+## 4.0.1
+
+### Bug Fixes
+
+- **Fixed null safety issues in GetModalBottomSheetRoute** - Added null checks for `widget.route` which was declared as nullable but accessed with `!` operator throughout, preventing potential runtime crashes
+- **Fixed transitionDuration inconsistency** - Changed hardcoded 700ms to use `enterBottomSheetDuration` for consistency with actual animation duration
+- **Added public getter for animationController** - Exposed private `_animationController` field through public getter to avoid accessing private members from another class
+- **Added fallback builder for null route builder** - Prevents crashes when `widget.route?.builder` is null by providing empty SizedBox fallback
+- **Added fallback animation for null route animation** - Uses `AlwaysStoppedAnimation(0.0)` when route animation is null
+- **Fixed null safety issues in GetMaterialApp and GetCupertinoApp** - Fixed `builder!` operator usage by using local variable to prevent null check errors
+- **Fixed unsafe cast in GetRootState** - Made `rootDelegate` nullable and added null checks for `navigatorKey` access
+- **Fixed GlobalKey creation in build method** - Added static fallback scaffold messenger key to avoid creating new GlobalKeys during build
+- **Made private field `_keys` in GetRootState** - Changed public mutable `keys` field to private `_keys` for better encapsulation
+- **Removed Material-specific properties from GetCupertinoApp** - Removed `highContrastTheme`, `highContrastDarkTheme`, and `actions` which are Material-specific
+- **Removed commented code** - Cleaned up unused commented code in get_root.dart
+
+---
+
 ## 4.0.0
 
 This release is a massive contribution by [@Baghdady92](https://github.com/Baghdady92), who single-handedly resolved **111 issues** from the upstream GetX tracker, fixed long-standing bugs across routing, state management, dependency injection, and reactive types, and grew the test suite from 144 to 494 tests. Huge thanks for the extraordinary effort that made this release possible.
@@ -167,7 +185,7 @@ This release resolves **111 issues reported on the upstream GetX issue tracker**
 
 - **Fixed parameter name mismatch warnings** - Resolved analyzer warnings about parameter names not matching overridden method signatures in RxList
 
-- **Fixed overlay closure logic** - Fixed a logical bug in `closeAllDialogsAndBottomSheets` where it incorrectly required *both* a dialog and a bottom sheet to be open simultaneously to close them (changed the condition check from `&&` to `||`).
+- **Fixed overlay closure logic** - Fixed a logical bug in `closeAllDialogsAndBottomSheets` where it incorrectly required _both_ a dialog and a bottom sheet to be open simultaneously to close them (changed the condition check from `&&` to `||`).
 
 ---
 

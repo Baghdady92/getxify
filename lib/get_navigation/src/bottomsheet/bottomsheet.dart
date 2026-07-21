@@ -57,7 +57,7 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
   final bool removeTop;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 700);
+  Duration get transitionDuration => enterBottomSheetDuration;
 
   @override
   bool get barrierDismissible => isDismissible;
@@ -69,6 +69,8 @@ class GetModalBottomSheetRoute<T> extends PopupRoute<T> {
   Color get barrierColor => modalBarrierColor ?? Colors.black54;
 
   AnimationController? _animationController;
+
+  AnimationController? get animationController => _animationController;
 
   @override
   void dispose() {
@@ -207,13 +209,13 @@ class _GetModalBottomSheetState<T> extends State<_GetModalBottomSheet<T>> {
     final routeLabel = _getRouteLabel(localizations);
 
     return AnimatedBuilder(
-      animation: widget.route!.animation!,
+      animation: widget.route?.animation ?? const AlwaysStoppedAnimation(0.0),
       builder: (context, child) {
         // Disable the initial animation when accessible navigation is on so
         // that the semantics are added to the tree at the correct time.
         final animationValue = mediaQuery.accessibleNavigation
             ? 1.0
-            : widget.route!.animation!.value;
+            : (widget.route?.animation?.value ?? 0.0);
         return Semantics(
           scopesRoute: true,
           namesRoute: true,
@@ -226,13 +228,13 @@ class _GetModalBottomSheetState<T> extends State<_GetModalBottomSheet<T>> {
                 widget.isScrollControlled,
               ),
               child: BottomSheet(
-                animationController: widget.route!._animationController,
+                animationController: widget.route?.animationController,
                 onClosing: () {
-                  if (widget.route!.isCurrent) {
+                  if (widget.route?.isCurrent ?? false) {
                     Navigator.pop(context);
                   }
                 },
-                builder: widget.route!.builder!,
+                builder: widget.route?.builder ?? (context) => const SizedBox(),
                 backgroundColor: widget.backgroundColor,
                 elevation: widget.elevation,
                 shape: widget.shape,

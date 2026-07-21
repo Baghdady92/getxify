@@ -274,16 +274,19 @@ class GetMaterialApp extends StatelessWidget {
               onGenerateRoute: onGenerateRoute,
               onGenerateInitialRoutes: onGenerateInitialRoutes,
               onUnknownRoute: onUnknownRoute,
-              builder: (context, child) => Directionality(
-                textDirection:
-                    textDirection ??
-                    (rtlLanguages.contains(Get.locale?.languageCode)
-                        ? TextDirection.rtl
-                        : TextDirection.ltr),
-                child: builder == null
-                    ? (child ?? const Material())
-                    : builder!(context, child ?? const Material()),
-              ),
+              builder: (context, child) {
+                final effectiveBuilder = builder;
+                return Directionality(
+                  textDirection:
+                      textDirection ??
+                      (rtlLanguages.contains(Get.locale?.languageCode)
+                          ? TextDirection.rtl
+                          : TextDirection.ltr),
+                  child: effectiveBuilder == null
+                      ? (child ?? const Material())
+                      : effectiveBuilder(context, child ?? const Material()),
+                );
+              },
               title: title,
               onGenerateTitle: onGenerateTitle,
               color: color,
